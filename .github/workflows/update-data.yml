@@ -1,0 +1,34 @@
+name: Update JSON Data
+
+on:
+  push:
+    paths:
+      - 'data/excel/*.xlsx'
+      - 'data/images/**'
+  workflow_dispatch:  # 允许手动触发
+
+jobs:
+  update-data:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.x'
+
+    - name: Install dependencies
+      run: pip install pandas openpyxl
+
+    - name: Convert Excel to JSON
+      run: python scripts/excel-to-json.py
+
+    - name: Commit and push changes
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add data/json/
+        git commit -m "Auto-update JSON data" || exit 0
+        git push
