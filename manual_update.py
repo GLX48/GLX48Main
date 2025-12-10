@@ -23,7 +23,7 @@ def setup_directories():
     
     directories = {
         'excel_dir': os.path.join(base_dir, 'data', 'excel'),
-        'json_dir': os.path.join(base_dir, 'data', 'json'),
+        'json_dir': os.path.join(base_dir, 'docs','data', 'json'),
         'images_single_skill': os.path.join(base_dir, 'data', 'images', 'single_skill'),
         'images_call_book': os.path.join(base_dir, 'data', 'images', 'call_book')
     }
