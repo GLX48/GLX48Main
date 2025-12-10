@@ -5,6 +5,7 @@ class App {
     constructor() {
         this.currentDataType = 'single_skill';
         this.currentData = [];
+        this.searchResults = []; // 存储当前搜索结果
         this.searchEngine = new SearchEngine();
         this.init();
     }
@@ -156,6 +157,7 @@ class App {
         }
 
         const results = this.searchEngine.search(this.currentData, query, filterType);
+        this.searchResults = results.exact; // 保存搜索结果
         this.displaySearchResults(results);
     }
 
@@ -178,18 +180,33 @@ class App {
             return;
         }
 
-        container.innerHTML = results.map(item => `
-            <div class="image-item">
-                
-                <p>${this.escapeHtml(item.filename)}</p>
-                <div class="keywords">
-                    ${item.keywords ? item.keywords.map(kw => 
-                        `<span class="keyword-tag" onclick="app.searchKeyword('${this.escapeHtml(kw)}')">${this.escapeHtml(kw)}</span>`
-                    ).join('') : ''}
+        container.innerHTML = results.map((item, index) => `
+            <div class="image-result" data-index="${index}" data-filename="${this.escapeHtml(item.filename)}">
+                <div class="image-thumbnail">
+                    <img src="${this.getImageUrl(item.filename)}" 
+                         alt="${this.escapeHtml(item.filename)}"
+                         onerror="this.onerror=null; this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iI2VlZSIvPjx0ZXh0IHg9IjEwMCIgeT0iMTAwIiBmb250LXNpemU9IjE0IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSIjOTk5Ij5QcmV2aWV3PC90ZXh0Pjwvc3ZnPg=='">
                 </div>
-                ${item.text_content ? `<p class="content-preview">${this.truncateText(item.text_content, 100)}</p>` : ''}
+                <div class="image-info">
+                    <h4>${this.escapeHtml(item.filename)}</h4>
+                    <div class="image-keywords">
+                        ${item.keywords ? item.keywords.map(kw => 
+                            `<span class="keyword-tag" onclick="event.stopPropagation(); app.searchKeyword('${this.escapeHtml(kw)}')">${this.escapeHtml(kw)}</span>`
+                        ).join('') : ''}
+                    </div>
+                </div>
             </div>
         `).join('');
+
+        // 为每个结果添加点击事件
+        container.querySelectorAll('.image-result').forEach(item => {
+            item.addEventListener('click', (e) => {
+                if (!e.target.classList.contains('keyword-tag')) {
+                    const index = parseInt(item.getAttribute('data-index'));
+                    this.openImageViewer(index);
+                }
+            });
+        });
     }
 
     displayFuzzySuggestions(suggestions) {
@@ -232,18 +249,36 @@ class App {
         this.performSearch();
     }
 
-    getImagePath(filename) {
+    getImageUrl(filename) {
         const basePath = this.getBasePath();
         return `${basePath}/data/images/${this.currentDataType}/${filename}`;
     }
 
+    openImageViewer(index) {
+        if (!this.searchResults || this.searchResults.length === 0) {
+            this.showError('没有搜索结果可查看');
+            return;
+        }
+
+        // 存储当前搜索结果到sessionStorage，以便在图片查看器中使用
+        sessionStorage.setItem('currentSearchResults', JSON.stringify(this.searchResults));
+        sessionStorage.setItem('currentDataType', this.currentDataType);
+        sessionStorage.setItem('currentImageIndex', index);
+        
+        // 跳转到图片查看器页面
+        const basePath = this.getBasePath();
+        window.location.href = `${basePath}/image-viewer.html`;
+    }
+
     escapeHtml(text) {
+        if (!text) return '';
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
     }
 
     truncateText(text, length) {
+        if (!text) return '';
         if (text.length <= length) return text;
         return text.substring(0, length) + '...';
     }
