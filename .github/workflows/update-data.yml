@@ -27,15 +27,15 @@ jobs:
     - name: Install dependencies
       run: pip install pandas openpyxl
     
-    - name: Convert Excel to JSON
-      run: python scripts/excel-to-json.py
+    # - name: Convert Excel to JSON
+    #   run: python scripts/excel-to-json.py
     
-    - name: Commit and push changes
-      run: |
-        git config --local user.email "action@github.com"
-        git config --local user.name "GitHub Action"
-        git add data/json/
-        git status  # 查看哪些文件被修改
-        git diff --cached  # 查看具体变更
-        git commit -m "Auto-update JSON data" || echo "No changes to commit"
-        git push
+    # - name: Commit and push changes
+    #   run: |
+    #     git config --local user.email "action@github.com"
+    #     git config --local user.name "GitHub Action"
+    #     git add data/json/
+    #     git status  # 查看哪些文件被修改
+    #     git diff --cached  # 查看具体变更
+    #     git commit -m "Auto-update JSON data" || echo "No changes to commit"
+    #     git push
