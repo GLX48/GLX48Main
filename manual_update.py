@@ -22,10 +22,10 @@ def setup_directories():
     base_dir = os.getcwd()
     
     directories = {
-        'excel_dir': os.path.join(base_dir, 'data', 'excel'),
+        'excel_dir': os.path.join(base_dir, 'docs','data', 'excel'),
         'json_dir': os.path.join(base_dir, 'docs','data', 'json'),
-        'images_single_skill': os.path.join(base_dir, 'data', 'images', 'single_skill'),
-        'images_call_book': os.path.join(base_dir, 'data', 'images', 'call_book')
+        'images_single_skill': os.path.join(base_dir, 'docs','data', 'images', 'single_skill'),
+        'images_call_book': os.path.join(base_dir, 'docs','data', 'images', 'call_book')
     }
     
     # 创建必要的目录
