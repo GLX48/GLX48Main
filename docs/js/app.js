@@ -261,25 +261,31 @@ class App {
         }
     
         console.log(`🖼️ 打开图片查看器，索引: ${index}, 总数: ${this.searchResults.length}`);
-        console.log(`📁 当前数据类型: ${this.currentDataType}`);
         
-        // 准备传递到图片查看器的数据
-        const viewerData = {
-            results: this.searchResults,
-            dataType: this.currentDataType,
-            currentIndex: index,
-            searchQuery: this.currentSearchQuery
-        };
-        
-        // 将数据编码为Base64，避免URL长度限制
-        const encodedData = btoa(JSON.stringify(viewerData));
-        
-        // 通过URL参数传递数据
-        const basePath = this.getBasePath();
-        const viewerUrl = `${basePath}/image-viewer.html?data=${encodedData}`;
-        
-        console.log(`🔗 跳转到: ${viewerUrl}`);
-        window.location.href = viewerUrl;
+        try {
+            // 将完整数据存储到 sessionStorage
+            const viewerData = {
+                results: this.searchResults,
+                dataType: this.currentDataType,
+                currentIndex: index,
+                searchQuery: this.currentSearchQuery || ''
+            };
+            
+            // 使用 sessionStorage 存储数据，避免 URL 编码问题
+            sessionStorage.setItem('glx48ViewerData', JSON.stringify(viewerData));
+            console.log('💾 数据已存储到 sessionStorage');
+            
+            // 跳转到图片查看器页面（不传递数据参数）
+            const basePath = this.getBasePath();
+            const viewerUrl = `${basePath}/image-viewer.html`;
+            
+            console.log(`🔗 跳转到: ${viewerUrl}`);
+            window.location.href = viewerUrl;
+            
+        } catch (error) {
+            console.error('❌ 数据存储失败:', error);
+            this.showError('无法打开图片查看器，请检查浏览器设置');
+        }
     }
 
     getBasePath() {
