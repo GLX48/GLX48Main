@@ -6,6 +6,7 @@ class App {
         this.currentDataType = 'single_skill';
         this.currentData = [];
         this.searchResults = []; // 存储当前搜索结果
+        this.currentSearchQuery = ''; // 存储当前搜索词
         this.searchEngine = new SearchEngine();
         this.init();
     }
@@ -150,6 +151,8 @@ class App {
 
         const query = document.getElementById('search-input').value.trim();
         const filterType = document.getElementById('filter-type').value;
+        
+        this.currentSearchQuery = query; // 保存搜索词
 
         if (!query) {
             this.clearSearchResults();
@@ -183,9 +186,7 @@ class App {
         container.innerHTML = results.map((item, index) => `
             <div class="image-result" data-index="${index}" data-filename="${this.escapeHtml(item.filename)}">
                 <div class="image-thumbnail">
-                    <img src="${this.getImageUrl(item.filename)}" 
-                         alt="${this.escapeHtml(item.filename)}"
-                         onerror="this.onerror=null; this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iI2VlZSIvPjx0ZXh0IHg9IjEwMCIgeT0iMTAwIiBmb250LXNpemU9IjE0IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSIjOTk5Ij5QcmV2aWV3PC90ZXh0Pjwvc3ZnPg=='">
+                    
                 </div>
                 <div class="image-info">
                     <h4>${this.escapeHtml(item.filename)}</h4>
@@ -199,10 +200,9 @@ class App {
         `).join('');
 
         // 为每个结果添加点击事件
-        container.querySelectorAll('.image-result').forEach(item => {
+        container.querySelectorAll('.image-result').forEach((item, index) => {
             item.addEventListener('click', (e) => {
                 if (!e.target.classList.contains('keyword-tag')) {
-                    const index = parseInt(item.getAttribute('data-index'));
                     this.openImageViewer(index);
                 }
             });
@@ -254,12 +254,13 @@ class App {
         return `${basePath}/data/images/${this.currentDataType}/${filename}`;
     }
 
+    // 修复后的 openImageViewer 方法 - 完全移除 btoa
     openImageViewer(index) {
         if (!this.searchResults || this.searchResults.length === 0) {
             this.showError('没有搜索结果可查看');
             return;
         }
-    
+
         console.log(`🖼️ 打开图片查看器，索引: ${index}, 总数: ${this.searchResults.length}`);
         
         try {
@@ -286,14 +287,6 @@ class App {
             console.error('❌ 数据存储失败:', error);
             this.showError('无法打开图片查看器，请检查浏览器设置');
         }
-    }
-
-    getBasePath() {
-        const path = window.location.pathname;
-        if (path.includes('/GLX48Main')) {
-            return '/GLX48Main';
-        }
-        return '';
     }
 
     escapeHtml(text) {
