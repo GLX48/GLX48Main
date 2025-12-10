@@ -1,70 +1,148 @@
 // docs/js/app.js
-console.log("当前页面URL:", window.location.href);
-console.log("页面路径:", window.location.pathname);
+console.log("🎵 GLX48 应援查询系统初始化中...");
 
 class App {
     constructor() {
         this.currentDataType = 'single_skill';
-        this.currentData = null;
+        this.currentData = [];
+        this.searchEngine = new SearchEngine();
         this.init();
     }
 
     async init() {
-        await this.loadData();
+        console.log("🚀 应用初始化开始");
         this.setupEventListeners();
+        await this.loadData();
+        console.log("✅ 应用初始化完成");
     }
 
     async loadData() {
         try {
-            // 获取当前页面的基础路径
-            const basePath = window.location.pathname.includes('/GLX48Main') 
-                ? '/GLX48Main' 
-                : '';
+            console.log(`📖 正在加载 ${this.currentDataType} 数据...`);
             
-            console.log(`正在加载 ${this.currentDataType} 数据...`);
-            console.log(`基础路径: ${basePath}`);
+            // 获取基础路径
+            const basePath = this.getBasePath();
+            const jsonPath = `${basePath}/data/json/${this.currentDataType}.json`;
+            console.log(`📍 JSON路径: ${jsonPath}`);
             
-            // 使用正确的路径
-            const response = await fetch(`${basePath}/data/json/${this.currentDataType}.json`);
+            const response = await fetch(jsonPath);
             
             if (!response.ok) {
                 throw new Error(`HTTP错误! 状态: ${response.status}`);
             }
             
             const data = await response.json();
-            console.log(`成功加载 ${this.currentDataType}.json:`, data);
+            console.log(`✅ 成功加载数据:`, data);
             
             this.currentData = data;
             this.displayData();
             
         } catch (error) {
-            console.error('数据加载失败:', error);
+            console.error('❌ 数据加载失败:', error);
             this.showError(`数据加载失败: ${error.message}`);
         }
     }
 
+    displayData() {
+        console.log("🖼️ displayData 方法被调用");
+        const container = document.getElementById('data-container');
+        
+        if (!container) {
+            console.error("❌ 找不到 data-container 元素");
+            return;
+        }
+        
+        if (!this.currentData || this.currentData.length === 0) {
+            container.innerHTML = `
+                <div class="data-info">
+                    <h3>${this.getDataTypeName()}</h3>
+                    <p>暂无数据或数据加载中...</p>
+                </div>
+            `;
+            return;
+        }
+        
+        // 显示数据统计信息
+        container.innerHTML = `
+            <div class="data-info">
+                <h3>${this.getDataTypeName()}</h3>
+                <p>共 ${this.currentData.length} 条记录</p>
+                <p>最后更新: ${new Date().toLocaleString()}</p>
+            </div>
+        `;
+        
+        console.log("✅ 数据展示完成");
+    }
+
+    getDataTypeName() {
+        return this.currentDataType === 'single_skill' ? '单技数据' : 'Call本数据';
+    }
+
+    getBasePath() {
+        const path = window.location.pathname;
+        if (path.includes('/GLX48Main')) {
+            return '/GLX48Main';
+        }
+        return '';
+    }
+
     setupEventListeners() {
+        console.log("🔧 设置事件监听器...");
+        
         // 导航切换
-        document.querySelectorAll('.nav a').forEach(link => {
-            link.addEventListener('click', (e) => {
-                e.preventDefault();
-                this.currentDataType = e.target.dataset.type;
-                this.loadData();
-                // 更新激活状态
-                document.querySelectorAll('.nav a').forEach(a => a.classList.remove('nav-active'));
-                e.target.classList.add('nav-active');
+        const navLinks = document.querySelectorAll('.nav a[data-type]');
+        if (navLinks.length > 0) {
+            navLinks.forEach(link => {
+                link.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const dataType = e.target.getAttribute('data-type');
+                    if (dataType && dataType !== this.currentDataType) {
+                        this.currentDataType = dataType;
+                        this.loadData();
+                        
+                        // 更新激活状态
+                        navLinks.forEach(a => a.classList.remove('nav-active'));
+                        e.target.classList.add('nav-active');
+                        
+                        console.log(`🔄 切换到: ${this.getDataTypeName()}`);
+                    }
+                });
             });
-        });
+        } else {
+            console.warn("⚠️ 未找到导航链接");
+        }
 
         // 搜索功能
-        document.getElementById('search-btn').addEventListener('click', () => this.performSearch());
-        document.getElementById('search-input').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') this.performSearch();
-        });
+        const searchBtn = document.getElementById('search-btn');
+        const searchInput = document.getElementById('search-input');
+        
+        if (searchBtn && searchInput) {
+            searchBtn.addEventListener('click', () => this.performSearch());
+            searchInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') this.performSearch();
+            });
+            
+            // 添加输入防抖
+            let searchTimeout;
+            searchInput.addEventListener('input', (e) => {
+                clearTimeout(searchTimeout);
+                searchTimeout = setTimeout(() => {
+                    if (e.target.value.length >= 2) {
+                        this.performSearch();
+                    }
+                }, 500);
+            });
+        } else {
+            console.warn("⚠️ 搜索元素未找到");
+        }
+        
+        console.log("✅ 事件监听器设置完成");
     }
 
     performSearch() {
-        if (!this.currentData) {
+        console.log("🔍 执行搜索...");
+        
+        if (!this.currentData || this.currentData.length === 0) {
             this.showError('数据尚未加载完成，请稍后重试。');
             return;
         }
@@ -73,81 +151,138 @@ class App {
         const filterType = document.getElementById('filter-type').value;
 
         if (!query) {
-            this.showError('请输入搜索关键词');
+            this.clearSearchResults();
             return;
         }
 
-        const searchResults = new SearchEngine(this.currentData).search(query, filterType);
-        this.displayResults(searchResults);
+        const results = this.searchEngine.search(this.currentData, query, filterType);
+        this.displaySearchResults(results);
     }
 
-    displayResults(results) {
+    displaySearchResults(results) {
+        console.log("📊 显示搜索结果:", results);
+        
         this.displayExactResults(results.exact);
         this.displayFuzzySuggestions(results.fuzzy);
     }
 
     displayExactResults(results) {
         const container = document.getElementById('exact-images');
-        
-        if (results.length === 0) {
-            container.innerHTML = '<p>没有找到精确匹配的结果</p>';
+        if (!container) {
+            console.error("❌ 找不到 exact-images 容器");
+            return;
+        }
+
+        if (!results || results.length === 0) {
+            container.innerHTML = '<p class="no-results">没有找到精确匹配的结果</p>';
             return;
         }
 
         container.innerHTML = results.map(item => `
             <div class="image-item">
-                <img src="${this.getImagePath(item.filename)}" 
-                     alt="${item.filename}" 
-                     onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjE1MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjE1MCIgZmlsbD0iI2VlZSIvPjx0ZXh0IHg9IjEwMCIgeT0iNzUiIGZvbnQtc2l6ZT0iMTQiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZpbGw9IiM5OTkiPua1i+ivleWbvuWDjzwvdGV4dD48L3N2Zz4='">
-                <p>${item.filename}</p>
-                <div>${item.keywords.map(kw => 
-                    `<span class="keyword-tag" onclick="app.searchKeyword('${kw}')">${kw}</span>`
-                ).join('')}</div>
+                
+                <p>${this.escapeHtml(item.filename)}</p>
+                <div class="keywords">
+                    ${item.keywords ? item.keywords.map(kw => 
+                        `<span class="keyword-tag" onclick="app.searchKeyword('${this.escapeHtml(kw)}')">${this.escapeHtml(kw)}</span>`
+                    ).join('') : ''}
+                </div>
+                ${item.text_content ? `<p class="content-preview">${this.truncateText(item.text_content, 100)}</p>` : ''}
             </div>
         `).join('');
-    }
-    
-    getImagePath(filename) {
-        // 获取当前页面的基础路径
-        const basePath = window.location.pathname.includes('/GLX48Main') 
-            ? '/GLX48Main' 
-            : '';
-        
-        return `${basePath}/data/images/${this.currentDataType}/${filename}`;
     }
 
     displayFuzzySuggestions(suggestions) {
         const container = document.getElementById('fuzzy-suggestions');
-        
-        if (suggestions.length === 0) {
-            container.innerHTML = '<p>没有找到模糊匹配的建议</p>';
+        if (!container) {
+            console.error("❌ 找不到 fuzzy-suggestions 容器");
+            return;
+        }
+
+        if (!suggestions || suggestions.length === 0) {
+            container.innerHTML = '<p class="no-results">没有找到模糊匹配的建议</p>';
             return;
         }
 
         container.innerHTML = suggestions.map(item => `
-            <div class="suggestion-item" onclick="app.useSuggestion('${item.matchedTerm}')">
-                匹配项: ${item.matchedTerm} (文件名: ${item.filename})
+            <div class="suggestion-item" onclick="app.useSuggestion('${this.escapeHtml(item.matchedTerm)}')">
+                <strong>${this.escapeHtml(item.matchedTerm)}</strong>
+                <span class="suggestion-file">(${this.escapeHtml(item.filename)})</span>
             </div>
         `).join('');
     }
 
+    clearSearchResults() {
+        const exactContainer = document.getElementById('exact-images');
+        const fuzzyContainer = document.getElementById('fuzzy-suggestions');
+        
+        if (exactContainer) exactContainer.innerHTML = '';
+        if (fuzzyContainer) fuzzyContainer.innerHTML = '';
+    }
+
     searchKeyword(keyword) {
+        console.log(`🔍 搜索关键词: ${keyword}`);
         document.getElementById('search-input').value = keyword;
         this.performSearch();
     }
 
     useSuggestion(term) {
+        console.log(`💡 使用建议: ${term}`);
         document.getElementById('search-input').value = term;
         this.performSearch();
     }
 
+    getImagePath(filename) {
+        const basePath = this.getBasePath();
+        return `${basePath}/data/images/${this.currentDataType}/${filename}`;
+    }
+
+    escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    truncateText(text, length) {
+        if (text.length <= length) return text;
+        return text.substring(0, length) + '...';
+    }
+
     showError(message) {
+        console.error("❌ 显示错误:", message);
+        
         const errorDiv = document.getElementById('error-message');
-        errorDiv.textContent = message;
-        errorDiv.style.display = 'block';
-        setTimeout(() => errorDiv.style.display = 'none', 5000);
+        if (errorDiv) {
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+            
+            setTimeout(() => {
+                errorDiv.style.display = 'none';
+            }, 5000);
+        }
+        
+        // 同时在控制台显示错误
+        console.error('应用错误:', message);
     }
 }
 
 // 初始化应用
+console.log("🎯 创建App实例...");
 const app = new App();
+console.log("✅ App实例创建完成");
+
+// 全局函数供HTML调用
+window.searchKeyword = function(keyword) {
+    if (window.app) {
+        window.app.searchKeyword(keyword);
+    }
+};
+
+window.useSuggestion = function(term) {
+    if (window.app) {
+        window.app.useSuggestion(term);
+    }
+};
+
+// 确保app在全局可访问
+window.app = app;
