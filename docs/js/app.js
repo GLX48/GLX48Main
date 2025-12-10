@@ -260,14 +260,34 @@ class App {
             return;
         }
 
-        // 存储当前搜索结果到sessionStorage，以便在图片查看器中使用
-        sessionStorage.setItem('currentSearchResults', JSON.stringify(this.searchResults));
-        sessionStorage.setItem('currentDataType', this.currentDataType);
-        sessionStorage.setItem('currentImageIndex', index);
+        console.log(`🖼️ 打开图片查看器，索引: ${index}, 总数: ${this.searchResults.length}`);
+        console.log(`📁 当前数据类型: ${this.currentDataType}`);
         
-        // 跳转到图片查看器页面
+        // 准备传递到图片查看器的数据
+        const viewerData = {
+            results: this.searchResults,
+            dataType: this.currentDataType,
+            currentIndex: index,
+            searchQuery: this.currentSearchQuery
+        };
+        
+        // 将数据编码为Base64，避免URL长度限制
+        const encodedData = btoa(JSON.stringify(viewerData));
+        
+        // 通过URL参数传递数据
         const basePath = this.getBasePath();
-        window.location.href = `${basePath}/image-viewer.html`;
+        const viewerUrl = `${basePath}/image-viewer.html?data=${encodedData}`;
+        
+        console.log(`🔗 跳转到: ${viewerUrl}`);
+        window.location.href = viewerUrl;
+    }
+
+    getBasePath() {
+        const path = window.location.pathname;
+        if (path.includes('/GLX48Main')) {
+            return '/GLX48Main';
+        }
+        return '';
     }
 
     escapeHtml(text) {
