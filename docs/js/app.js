@@ -259,7 +259,7 @@ class App {
             this.showError('没有搜索结果可查看');
             return;
         }
-
+    
         console.log(`🖼️ 打开图片查看器，索引: ${index}, 总数: ${this.searchResults.length}`);
         console.log(`📁 当前数据类型: ${this.currentDataType}`);
         
