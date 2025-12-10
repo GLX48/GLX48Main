@@ -1,3 +1,7 @@
+// docs/js/app.js
+console.log("当前页面URL:", window.location.href);
+console.log("页面路径:", window.location.pathname);
+
 class App {
     constructor() {
         this.currentDataType = 'single_skill';
@@ -12,13 +16,30 @@ class App {
 
     async loadData() {
         try {
-            // 使用相对路径，适应 GitHub Pages 的部署结构
-            const response = await fetch(`../data/json/${this.currentDataType}.json`);
-            this.currentData = await response.json();
-            console.log(`加载${this.currentDataType}数据成功`);
+            // 获取当前页面的基础路径
+            const basePath = window.location.pathname.includes('/GLX48Main') 
+                ? '/GLX48Main' 
+                : '';
+            
+            console.log(`正在加载 ${this.currentDataType} 数据...`);
+            console.log(`基础路径: ${basePath}`);
+            
+            // 使用正确的路径
+            const response = await fetch(`${basePath}/data/json/${this.currentDataType}.json`);
+            
+            if (!response.ok) {
+                throw new Error(`HTTP错误! 状态: ${response.status}`);
+            }
+            
+            const data = await response.json();
+            console.log(`成功加载 ${this.currentDataType}.json:`, data);
+            
+            this.currentData = data;
+            this.displayData();
+            
         } catch (error) {
-            this.showError('数据加载失败，请检查后端数据是否已生成。');
-            console.error('数据加载错误:', error);
+            console.error('数据加载失败:', error);
+            this.showError(`数据加载失败: ${error.message}`);
         }
     }
 
@@ -75,7 +96,7 @@ class App {
 
         container.innerHTML = results.map(item => `
             <div class="image-item">
-                <img src="data/images/${this.currentDataType}/${item.filename}" 
+                <img src="${this.getImagePath(item.filename)}" 
                      alt="${item.filename}" 
                      onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjE1MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjE1MCIgZmlsbD0iI2VlZSIvPjx0ZXh0IHg9IjEwMCIgeT0iNzUiIGZvbnQtc2l6ZT0iMTQiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZpbGw9IiM5OTkiPua1i+ivleWbvuWDjzwvdGV4dD48L3N2Zz4='">
                 <p>${item.filename}</p>
@@ -84,6 +105,15 @@ class App {
                 ).join('')}</div>
             </div>
         `).join('');
+    }
+    
+    getImagePath(filename) {
+        // 获取当前页面的基础路径
+        const basePath = window.location.pathname.includes('/GLX48Main') 
+            ? '/GLX48Main' 
+            : '';
+        
+        return `${basePath}/data/images/${this.currentDataType}/${filename}`;
     }
 
     displayFuzzySuggestions(suggestions) {
