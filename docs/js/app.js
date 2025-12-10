@@ -12,11 +12,13 @@ class App {
 
     async loadData() {
         try {
-            const response = await fetch(`data/json/${this.currentDataType}.json`);
+            // 使用相对路径，适应 GitHub Pages 的部署结构
+            const response = await fetch(`../data/json/${this.currentDataType}.json`);
             this.currentData = await response.json();
             console.log(`加载${this.currentDataType}数据成功`);
         } catch (error) {
             this.showError('数据加载失败，请检查后端数据是否已生成。');
+            console.error('数据加载错误:', error);
         }
     }
 
