@@ -200,24 +200,50 @@ body {
 .image-thumbnail {
     width: 100%;
     height: 180px;
-    overflow: hidden;
+    background: #f8f9fa;
     border-radius: 6px;
     margin-bottom: 12px;
-    background: #f8f9fa;
+    overflow: hidden;
     display: flex;
     align-items: center;
     justify-content: center;
+    position: relative;
 }
 
 .image-thumbnail img {
     max-width: 100%;
     max-height: 100%;
     object-fit: contain;
-    transition: transform 0.3s ease;
+    transition: all 0.3s ease;
 }
 
 .image-result:hover .image-thumbnail img {
     transform: scale(1.05);
+}
+
+/* 缩略图错误状态 */
+.thumbnail-error {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    padding: 20px;
+    text-align: center;
+    color: #e74c3c;
+}
+
+.error-icon {
+    font-size: 24px;
+    margin-bottom: 8px;
+}
+
+.error-text {
+    font-size: 14px;
+}
+
+.image-info {
+    text-align: center;
 }
 
 .image-info h4 {
@@ -234,20 +260,19 @@ body {
     display: flex;
     flex-wrap: wrap;
     justify-content: center;
-    gap: 5px;
-    margin-top: 8px;
+    gap: 8px;
+    margin-top: 10px;
 }
 
 .keyword-tag {
     display: inline-block;
     background: #ecf0f1;
+    color: #34495e;
     padding: 6px 12px;
-    margin: 3px;
     border-radius: 20px;
-    font-size: 0.85rem;
+    font-size: 0.9rem;
     cursor: pointer;
     transition: all 0.3s;
-    color: #34495e;
 }
 
 .keyword-tag:hover {
@@ -273,7 +298,7 @@ body {
     background: #219653;
 }
 
-/* 模态框样式 - 简化版 */
+/* 模态框样式 */
 .modal {
     display: none;
     position: fixed;
@@ -283,119 +308,3 @@ body {
     width: 100%;
     height: 100%;
     background-color: rgba(0, 0, 0, 0.95);
-    animation: fadeIn 0.3s ease;
-}
-
-.modal-content {
-    background-color: transparent;
-    margin: 0;
-    padding: 0;
-    width: 100%;
-    height: 100%;
-    position: relative;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.close-btn {
-    color: white;
-    position: absolute;
-    top: 20px;
-    right: 30px;
-    font-size: 40px;
-    font-weight: bold;
-    cursor: pointer;
-    z-index: 1001;
-    background: rgba(0, 0, 0, 0.5);
-    width: 50px;
-    height: 50px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: background 0.3s;
-}
-
-.close-btn:hover {
-    background: rgba(0, 0, 0, 0.8);
-}
-
-.modal .image-container {
-    width: 100%;
-    height: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 20px;
-}
-
-.modal .image-container img {
-    max-width: 100%;
-    max-height: 100%;
-    object-fit: contain;
-    border-radius: 8px;
-    box-shadow: 0 10px 40px rgba(0,0,0,0.8);
-}
-
-.image-error {
-    text-align: center;
-    padding: 50px;
-    color: #e74c3c;
-    font-size: 1.2rem;
-}
-
-/* 动画效果 */
-@keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
-}
-
-@keyframes zoomIn {
-    from { transform: scale(0.8); opacity: 0; }
-    to { transform: scale(1); opacity: 1; }
-}
-
-.modal .image-container img {
-    animation: zoomIn 0.3s ease;
-}
-
-/* 响应式调整 */
-@media (max-width: 768px) {
-    .container {
-        flex-direction: column;
-    }
-    
-    .sidebar {
-        width: 100%;
-    }
-    
-    .images-grid {
-        grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-        gap: 20px;
-    }
-    
-    .close-btn {
-        top: 10px;
-        right: 15px;
-        font-size: 30px;
-        width: 40px;
-        height: 40px;
-    }
-}
-
-.no-results {
-    text-align: center;
-    padding: 40px;
-    color: #7f8c8d;
-    font-style: italic;
-}
-
-.error-message {
-    background: #e74c3c;
-    color: white;
-    padding: 15px;
-    border-radius: 8px;
-    text-align: center;
-    margin: 20px 0;
-}

@@ -23,7 +23,6 @@ class App {
         try {
             console.log(`📖 正在加载 ${this.currentDataType} 数据...`);
             
-            // 获取基础路径
             const basePath = this.getBasePath();
             const jsonPath = `${basePath}/data/json/${this.currentDataType}.json`;
             console.log(`📍 JSON路径: ${jsonPath}`);
@@ -65,7 +64,6 @@ class App {
             return;
         }
         
-        // 显示数据统计信息
         container.innerHTML = `
             <div class="data-info">
                 <h3>${this.getDataTypeName()}</h3>
@@ -157,14 +155,6 @@ class App {
             });
         }
         
-        // 复制内容按钮
-        const copyBtn = document.getElementById('copy-content-btn');
-        if (copyBtn) {
-            copyBtn.addEventListener('click', () => {
-                this.copyContentToClipboard();
-            });
-        }
-        
         console.log("✅ 事件监听器设置完成");
     }
 
@@ -242,6 +232,48 @@ class App {
                 }
             });
         });
+
+        // 加载缩略图
+        this.loadThumbnails();
+    }
+
+    // 加载缩略图
+    loadThumbnails() {
+        const thumbnails = document.querySelectorAll('.image-thumbnail');
+        thumbnails.forEach((thumbnail, index) => {
+            if (index < this.searchResults.length) {
+                const item = this.searchResults[index];
+                const imageUrl = this.getImageUrl(item.filename);
+                
+                const img = new Image();
+                img.onload = () => {
+                    console.log(`✅ 缩略图加载成功: ${imageUrl}`);
+                    thumbnail.innerHTML = '';
+                    thumbnail.appendChild(img);
+                    img.style.opacity = '0';
+                    setTimeout(() => {
+                        img.style.opacity = '1';
+                    }, 10);
+                };
+                
+                img.onerror = () => {
+                    console.error(`❌ 缩略图加载失败: ${imageUrl}`);
+                    thumbnail.innerHTML = `
+                        <div class="thumbnail-error">
+                            <div class="error-icon">❌</div>
+                            <div class="error-text">图片加载失败</div>
+                        </div>
+                    `;
+                };
+                
+                img.src = imageUrl;
+                img.alt = item.filename;
+                img.style.width = '100%';
+                img.style.height = '100%';
+                img.style.objectFit = 'contain';
+                img.style.transition = 'opacity 0.3s ease';
+            }
+        });
     }
 
     displayFuzzySuggestions(suggestions) {
@@ -275,16 +307,17 @@ class App {
         const imageUrl = this.getImageUrl(item.filename);
         console.log(`🖼️ 打开图片预览: ${imageUrl}`);
         
-        // 创建图片元素
+        // 设置图片
         const imageContainer = document.querySelector('.modal .image-container');
-        imageContainer.innerHTML = `
-            
-        `;
+        imageContainer.innerHTML = '';
         
         const img = new Image();
         img.onload = () => {
             console.log('✅ 模态框图片加载成功');
-            img.style.opacity = '1';
+            img.style.opacity = '0';
+            setTimeout(() => {
+                img.style.opacity = '1';
+            }, 10);
         };
         
         img.onerror = () => {
@@ -299,7 +332,9 @@ class App {
         
         img.src = imageUrl;
         img.alt = item.filename;
-        img.style.opacity = '0';
+        img.style.maxWidth = '100%';
+        img.style.maxHeight = '100%';
+        img.style.objectFit = 'contain';
         img.style.transition = 'opacity 0.3s ease';
         
         imageContainer.appendChild(img);
@@ -317,7 +352,7 @@ class App {
         document.body.style.overflow = 'auto';
     }
 
-    // 复制内容到剪贴板 - 从搜索结果直接调用
+    // 复制内容到剪贴板
     copyContent(content) {
         if (!content) {
             this.showError('没有可复制的内容');
@@ -340,7 +375,6 @@ class App {
 
     // 显示临时消息
     showTemporaryMessage(message) {
-        // 创建临时消息元素
         const messageElement = document.createElement('div');
         messageElement.textContent = message;
         messageElement.style.cssText = `
