@@ -302,35 +302,63 @@ class App {
             this.showError('没有搜索结果可查看');
             return;
         }
-
+    
         const item = this.searchResults[index];
         const imageUrl = this.getImageUrl(item.filename);
-        console.log(`🖼️ 打开图片预览: ${imageUrl}`);
+        console.log(`🖼🖼🖼️ 打开图片预览: ${imageUrl}`);
         
         // 设置模态框标题
         document.getElementById('modal-title').textContent = item.filename;
         
-        // 设置图片计数器
-        document.getElementById('image-counter').textContent = `${index + 1}/${this.searchResults.length}`;
-        
         // 清空并设置图片容器
         const imageContainer = document.querySelector('.modal .image-container');
-        imageContainer.innerHTML = '';
+        imageContainer.innerHTML = `
+            <div class="image-viewer-container">
+                <div class="image-zoom-container">
+                    <div class="image-loader">
+                        <div class="loader"></div>
+                        <p>加载图片中...</p>
+                    </div>
+                </div>
+                <div class="zoom-controls">
+                    <button class="zoom-btn zoom-in" onclick="app.zoomIn()">+</button>
+                    <button class="zoom-btn zoom-out" onclick="app.zoomOut()">-</button>
+                    <div class="zoom-level">100%</div>
+                </div>
+                <button class="reset-btn" onclick="app.resetZoom()">重置</button>
+            </div>
+        `;
         
         // 创建图片元素
         const img = new Image();
+        const zoomContainer = document.querySelector('.image-zoom-container');
+        
         img.onload = () => {
             console.log('✅ 模态框图片加载成功');
-            imageContainer.innerHTML = '';
-            imageContainer.appendChild(img);
+            zoomContainer.innerHTML = '';
+            zoomContainer.appendChild(img);
+            
+            // 初始化手势支持
+            this.setupGestureSupport(zoomContainer, img);
+            
+            // 添加导航控制（如果有多张图片）
+            if (this.searchResults.length > 1) {
+                this.addNavigationControls(index);
+            }
+            
+            // 添加图片计数器
+            this.addImageCounter(index);
         };
         
         img.onerror = () => {
-            console.error('❌ 模态框图片加载失败');
-            imageContainer.innerHTML = `
+            console.error('❌❌ 模态框图片加载失败');
+            zoomContainer.innerHTML = `
                 <div class="image-error">
-                    无法加载图片: ${this.escapeHtml(item.filename)}<br>
-                    <small>请检查图片文件是否存在: ${imageUrl}</small>
+                    <div class="error-icon">❌❌</div>
+                    <h3>无法加载图片</h3>
+                    <p>文件: ${this.escapeHtml(item.filename)}</p>
+                    <p>路径: ${imageUrl}</p>
+                    <button class="retry-btn" onclick="app.retryModalImage('${this.escapeHtml(imageUrl)}', '${this.escapeHtml(item.filename)}')">重试加载</button>
                 </div>
             `;
         };
@@ -347,12 +375,29 @@ class App {
         
         // 存储当前索引用于导航
         this.currentImageIndex = index;
+        
+        // 初始化缩放和位置状态
+        this.imageZoomLevel = 1;
+        this.imagePosition = { x: 0, y: 0 };
+        this.isDragging = false;
     }
 
     // 关闭模态框
     closeModal() {
         document.getElementById('image-modal').style.display = 'none';
         document.body.style.overflow = 'auto';
+        
+        // 清理控制元素
+        const navControls = document.querySelector('.nav-controls');
+        const counter = document.querySelector('.image-counter');
+        
+        if (navControls) navControls.remove();
+        if (counter) counter.remove();
+        
+        // 重置状态
+        this.imageZoomLevel = 1;
+        this.imagePosition = { x: 0, y: 0 };
+        this.isDragging = false;
     }
 
     // 上一张图片
@@ -473,6 +518,223 @@ class App {
         }
         
         console.error('应用错误:', message);
+    }
+
+        // 设置手势支持
+    setupGestureSupport(container, img) {
+        // 鼠标事件
+        container.addEventListener('mousedown', this.handleImageMouseDown.bind(this));
+        container.addEventListener('wheel', this.handleImageWheel.bind(this), { passive: false });
+        
+        // 触摸事件
+        container.addEventListener('touchstart', this.handleImageTouchStart.bind(this));
+        container.addEventListener('touchmove', this.handleImageTouchMove.bind(this));
+        container.addEventListener('touchend', this.handleImageTouchEnd.bind(this));
+        
+        // 双击重置
+        container.addEventListener('dblclick', () => {
+            this.resetImageTransform(container);
+        });
+    }
+
+    // 鼠标按下事件
+    handleImageMouseDown(e) {
+        if (e.button !== 0) return; // 只处理左键
+        
+        this.isDragging = true;
+        this.dragStart = { x: e.clientX - this.imagePosition.x, y: e.clientY - this.imagePosition.y };
+        
+        // 更改光标样式
+        const container = document.querySelector('.image-viewer-container');
+        container.classList.add('grabbing');
+        
+        // 添加全局鼠标事件
+        document.addEventListener('mousemove', this.handleImageMouseMove.bind(this));
+        document.addEventListener('mouseup', this.handleImageMouseUp.bind(this));
+        
+        e.preventDefault();
+    }
+
+    // 鼠标移动事件
+    handleImageMouseMove(e) {
+        if (!this.isDragging) return;
+        
+        this.imagePosition.x = e.clientX - this.dragStart.x;
+        this.imagePosition.y = e.clientY - this.dragStart.y;
+        
+        this.updateImageTransform();
+        
+        e.preventDefault();
+    }
+
+    // 鼠标释放事件
+    handleImageMouseUp() {
+        this.isDragging = false;
+        const container = document.querySelector('.image-viewer-container');
+        container.classList.remove('grabbing');
+        
+        // 移除全局事件
+        document.removeEventListener('mousemove', this.handleImageMouseMove);
+        document.removeEventListener('mouseup', this.handleImageMouseUp);
+    }
+
+    // 鼠标滚轮事件
+    handleImageWheel(e) {
+        e.preventDefault();
+        
+        const zoomIntensity = 0.1;
+        const delta = e.deltaY > 0 ? -zoomIntensity : zoomIntensity;
+        
+        this.imageZoomLevel = Math.max(0.5, Math.min(3, this.imageZoomLevel + delta));
+        this.updateImageTransform();
+    }
+
+    // 触摸开始事件
+    handleImageTouchStart(e) {
+        if (e.touches.length === 1) {
+            // 单指触摸 - 拖动
+            this.isDragging = true;
+            this.dragStart = { 
+                x: e.touches[0].clientX - this.imagePosition.x, 
+                y: e.touches[0].clientY - this.imagePosition.y 
+            };
+        } else if (e.touches.length === 2) {
+            // 双指触摸 - 缩放
+            this.startDistance = this.getTouchDistance(e.touches[0], e.touches[1]);
+            this.startZoom = this.imageZoomLevel;
+        }
+        
+        e.preventDefault();
+    }
+
+    // 触摸移动事件
+    handleImageTouchMove(e) {
+        if (e.touches.length === 1 && this.isDragging) {
+            // 单指移动 - 拖动
+            this.imagePosition.x = e.touches[0].clientX - this.dragStart.x;
+            this.imagePosition.y = e.touches[0].clientY - this.dragStart.y;
+            this.updateImageTransform();
+        } else if (e.touches.length === 2) {
+            // 双指移动 - 缩放
+            const currentDistance = this.getTouchDistance(e.touches[0], e.touches[1]);
+            const zoomFactor = currentDistance / this.startDistance;
+            this.imageZoomLevel = this.startZoom * zoomFactor;
+            
+            // 限制缩放范围
+            this.imageZoomLevel = Math.max(0.5, Math.min(3, this.imageZoomLevel));
+            this.updateImageTransform();
+        }
+        
+        e.preventDefault();
+    }
+
+    // 触摸结束事件
+    handleImageTouchEnd(e) {
+        this.isDragging = false;
+    }
+
+    // 获取触摸点距离
+    getTouchDistance(touch1, touch2) {
+        const dx = touch1.clientX - touch2.clientX;
+        const dy = touch1.clientY - touch2.clientY;
+        return Math.sqrt(dx * dx + dy * dy);
+    }
+
+    // 更新图片变换
+    updateImageTransform() {
+        const container = document.querySelector('.image-zoom-container');
+        if (!container) return;
+        
+        // 限制位置
+        this.constrainImagePosition();
+        
+        container.style.transform = `translate(${this.imagePosition.x}px, ${this.imagePosition.y}px) scale(${this.imageZoomLevel})`;
+        
+        // 更新缩放级别显示
+        this.updateZoomLevelDisplay();
+    }
+
+    // 限制图片位置
+    constrainImagePosition() {
+        const maxX = (this.imageZoomLevel - 1) * 100;
+        const maxY = (this.imageZoomLevel - 1) * 100;
+        
+        this.imagePosition.x = Math.max(-maxX, Math.min(maxX, this.imagePosition.x));
+        this.imagePosition.y = Math.max(-maxY, Math.min(maxY, this.imagePosition.y));
+    }
+
+    // 更新缩放级别显示
+    updateZoomLevelDisplay() {
+        const zoomLevelElement = document.querySelector('.zoom-level');
+        if (zoomLevelElement) {
+            zoomLevelElement.textContent = Math.round(this.imageZoomLevel * 100) + '%';
+        }
+    }
+
+    // 放大图片
+    zoomIn() {
+        this.imageZoomLevel = Math.min(3, this.imageZoomLevel + 0.2);
+        this.updateImageTransform();
+    }
+
+    // 缩小图片
+    zoomOut() {
+        this.imageZoomLevel = Math.max(0.5, this.imageZoomLevel - 0.2);
+        this.updateImageTransform();
+    }
+
+    // 重置图片变换
+    resetZoom() {
+        this.imageZoomLevel = 1;
+        this.imagePosition = { x: 0, y: 0 };
+        this.updateImageTransform();
+    }
+
+    // 添加导航控制
+    addNavigationControls(index) {
+        const navControls = document.createElement('div');
+        navControls.className = 'nav-controls';
+        navControls.innerHTML = `
+            <button class="nav-btn prev" onclick="app.prevImage()">‹</button>
+            <button class="nav-btn next" onclick="app.nextImage()">›</button>
+        `;
+        
+        document.querySelector('.modal-content').appendChild(navControls);
+    }
+
+    // 添加图片计数器
+    addImageCounter(index) {
+        const counter = document.createElement('div');
+        counter.className = 'image-counter';
+        counter.textContent = `${index + 1} / ${this.searchResults.length}`;
+        document.querySelector('.modal-content').appendChild(counter);
+    }
+
+    // 重试加载模态框图片
+    retryModalImage(imageUrl, filename) {
+        const imageContainer = document.querySelector('.modal .image-container');
+        imageContainer.innerHTML = '<div class="image-loader"><div class="loader"></div><p>重新加载中...</p></div>';
+        
+        const img = new Image();
+        img.onload = () => {
+            const zoomContainer = document.querySelector('.image-zoom-container');
+            zoomContainer.innerHTML = '';
+            zoomContainer.appendChild(img);
+            
+            // 重新设置手势支持
+            this.setupGestureSupport(zoomContainer, img);
+        };
+        
+        img.onerror = () => {
+            const zoomContainer = document.querySelector('.image-zoom-container');
+            zoomContainer.innerHTML = '<div class="image-error">重试加载失败，请检查网络连接</div>';
+        };
+        
+        img.src = imageUrl + '?retry=' + Date.now();
+        img.alt = filename;
+        img.style.maxWidth = '100%';
+        img.style.maxHeight = '100%';
+        img.style.objectFit = 'contain';
     }
 }
 
