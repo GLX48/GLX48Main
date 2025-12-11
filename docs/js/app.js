@@ -9,6 +9,7 @@ class App {
         this.currentSearchQuery = '';
         this.searchEngine = new SearchEngine();
         this.currentContentToCopy = '';
+        this.currentImageIndex = 0;
         this.init();
     }
 
@@ -101,7 +102,6 @@ class App {
                         this.currentDataType = dataType;
                         this.loadData();
                         
-                        // 更新激活状态
                         navLinks.forEach(a => a.classList.remove('nav-active'));
                         e.target.classList.add('nav-active');
                         
@@ -296,7 +296,7 @@ class App {
         `).join('');
     }
 
-    // 打开图片预览模态框 - 简化版，只显示图片
+    // 打开图片预览模态框
     openImagePreview(index) {
         if (!this.searchResults || this.searchResults.length === 0) {
             this.showError('没有搜索结果可查看');
@@ -307,17 +307,22 @@ class App {
         const imageUrl = this.getImageUrl(item.filename);
         console.log(`🖼️ 打开图片预览: ${imageUrl}`);
         
-        // 设置图片
+        // 设置模态框标题
+        document.getElementById('modal-title').textContent = item.filename;
+        
+        // 设置图片计数器
+        document.getElementById('image-counter').textContent = `${index + 1}/${this.searchResults.length}`;
+        
+        // 清空并设置图片容器
         const imageContainer = document.querySelector('.modal .image-container');
         imageContainer.innerHTML = '';
         
+        // 创建图片元素
         const img = new Image();
         img.onload = () => {
             console.log('✅ 模态框图片加载成功');
-            img.style.opacity = '0';
-            setTimeout(() => {
-                img.style.opacity = '1';
-            }, 10);
+            imageContainer.innerHTML = '';
+            imageContainer.appendChild(img);
         };
         
         img.onerror = () => {
@@ -335,21 +340,43 @@ class App {
         img.style.maxWidth = '100%';
         img.style.maxHeight = '100%';
         img.style.objectFit = 'contain';
-        img.style.transition = 'opacity 0.3s ease';
-        
-        imageContainer.appendChild(img);
         
         // 显示模态框
         document.getElementById('image-modal').style.display = 'block';
-        
-        // 阻止背景滚动
         document.body.style.overflow = 'hidden';
+        
+        // 存储当前索引用于导航
+        this.currentImageIndex = index;
     }
 
     // 关闭模态框
     closeModal() {
         document.getElementById('image-modal').style.display = 'none';
         document.body.style.overflow = 'auto';
+    }
+
+    // 上一张图片
+    prevImage() {
+        if (this.searchResults.length <= 1) return;
+        
+        this.currentImageIndex--;
+        if (this.currentImageIndex < 0) {
+            this.currentImageIndex = this.searchResults.length - 1;
+        }
+        
+        this.openImagePreview(this.currentImageIndex);
+    }
+
+    // 下一张图片
+    nextImage() {
+        if (this.searchResults.length <= 1) return;
+        
+        this.currentImageIndex++;
+        if (this.currentImageIndex >= this.searchResults.length) {
+            this.currentImageIndex = 0;
+        }
+        
+        this.openImagePreview(this.currentImageIndex);
     }
 
     // 复制内容到剪贴板
@@ -432,12 +459,6 @@ class App {
         return div.innerHTML;
     }
 
-    truncateText(text, length) {
-        if (!text) return '';
-        if (text.length <= length) return text;
-        return text.substring(0, length) + '...';
-    }
-
     showError(message) {
         console.error("❌ 显示错误:", message);
         
@@ -476,6 +497,18 @@ window.useSuggestion = function(term) {
 window.copyContent = function(content) {
     if (window.app) {
         window.app.copyContent(content);
+    }
+};
+
+window.prevImage = function() {
+    if (window.app) {
+        window.app.prevImage();
+    }
+};
+
+window.nextImage = function() {
+    if (window.app) {
+        window.app.nextImage();
     }
 };
 

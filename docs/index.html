@@ -63,12 +63,20 @@
         </main>
     </div>
 
-    <!-- 图片预览模态框 - 简化版，只显示图片 -->
+    <!-- 图片预览模态框 -->
     <div id="image-modal" class="modal">
         <div class="modal-content">
             <span class="close-btn" id="modal-close">&times;</span>
+            <div class="modal-header">
+                <h2 id="modal-title">图片预览</h2>
+            </div>
             <div class="image-container">
-                
+                <!-- 图片将在这里显示 -->
+            </div>
+            <div class="nav-controls">
+                <button class="nav-btn prev" onclick="app.prevImage()">‹</button>
+                <div class="counter" id="image-counter">1/1</div>
+                <button class="nav-btn next" onclick="app.nextImage()">›</button>
             </div>
         </div>
     </div>
