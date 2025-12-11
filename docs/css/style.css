@@ -797,7 +797,7 @@ body {
 }
 
 /* 建议项操作按钮 */
-/* .suggestion-actions {
+.suggestion-actions {
     display: flex;
     gap: 8px;
     margin-top: 10px;
@@ -817,4 +817,4 @@ body {
 .suggestion-action-btn:hover {
     background: #e9ecef;
     color: #495057;
-} */
+}

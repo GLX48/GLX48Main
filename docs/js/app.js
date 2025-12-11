@@ -406,10 +406,6 @@ class App {
             if (item.matchType === 'keywords' && item.matchedTerm) {
                 // 直接使用匹配到的关键词
                 keywords.add(item.matchedTerm);
-            } else if (item.matchType === 'content' && item.matchedTerm) {
-                // 从内容匹配中提取有意义的短语
-                const extractedKeywords = this.extractKeywordsFromContent(item.matchedTerm);
-                extractedKeywords.forEach(keyword => keywords.add(keyword));
             } else if (item.matchType === 'song_name' && item.matchedTerm) {
                 // 歌曲名作为关键词
                 keywords.add(item.matchedTerm);
