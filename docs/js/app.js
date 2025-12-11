@@ -318,27 +318,27 @@ class App {
             return;
         }
     
-        // // 提取独特的搜索关键词建议
-        // const keywordSuggestions = this.extractKeywordSuggestions(filteredSuggestions);
+        // 提取独特的搜索关键词建议
+        const keywordSuggestions = this.extractKeywordSuggestions(filteredSuggestions);
         
-        // let html = '<div class="fuzzy-suggestions-container">';
+        let html = '<div class="fuzzy-suggestions-container">';
         
-        // // 添加关键词搜索建议
-        // if (keywordSuggestions.length > 0) {
-        //     html += `
-        //         <div class="suggestion-section">
-        //             <h4>💡 尝试搜索这些关键词：</h4>
-        //             <div class="keyword-suggestions">
-        //                 ${keywordSuggestions.map(keyword => `
-        //                     <button class="keyword-suggestion-btn" 
-        //                             onclick="app.searchKeyword('${this.escapeHtml(keyword)}')">
-        //                         ${this.escapeHtml(keyword)}
-        //                     </button>
-        //                 `).join('')}
-        //             </div>
-        //         </div>
-        //     `;
-        // }
+        // 添加关键词搜索建议
+        if (keywordSuggestions.length > 0) {
+            html += `
+                <div class="suggestion-section">
+                    <h4>💡 尝试搜索这些关键词：</h4>
+                    <div class="keyword-suggestions">
+                        ${keywordSuggestions.map(keyword => `
+                            <button class="keyword-suggestion-btn" 
+                                    onclick="app.searchKeyword('${this.escapeHtml(keyword)}')">
+                                ${this.escapeHtml(keyword)}
+                            </button>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        }
     
         // 原有的文件匹配建议
         html += `
@@ -406,6 +406,10 @@ class App {
             if (item.matchType === 'keywords' && item.matchedTerm) {
                 // 直接使用匹配到的关键词
                 keywords.add(item.matchedTerm);
+            } else if (item.matchType === 'content' && item.matchedTerm) {
+                // 从内容匹配中提取有意义的短语
+                const extractedKeywords = this.extractKeywordsFromContent(item.matchedTerm);
+                extractedKeywords.forEach(keyword => keywords.add(keyword));
             } else if (item.matchType === 'song_name' && item.matchedTerm) {
                 // 歌曲名作为关键词
                 keywords.add(item.matchedTerm);
