@@ -106,33 +106,53 @@ def create_sample_excel_files(excel_dir):
         return False
 
 def convert_excel_to_json(excel_path, json_path, data_type):
-    """将Excel文件转换为JSON格式"""
+    """将Excel文件转换为JSON格式 - 简化修复版本"""
     try:
-        print(f"\n📖 正在读取: {os.path.basename(excel_path)}")
+        print(f"\n📖📖 正在读取: {os.path.basename(excel_path)}")
         
         # 读取Excel文件
         df = pd.read_excel(excel_path)
         print(f"✅ 成功读取Excel，共{len(df)}行数据")
         
-        # 数据转换
+        # 数据转换和过滤
         records = []
+        
         for index, row in df.iterrows():
-            # 基础数据
+            # 获取文件名并检查有效性
+            filename = str(row.get('filename', '')).strip()
+            
+            # 跳过无效文件名（包括"nan"）
+            if (not filename or 
+                filename.lower() == 'nan' or 
+                len(filename) < 2):
+                continue
+            
+            # 处理文本内容
+            text_content = str(row.get('text_content', '')).strip()
+            if text_content.lower() == 'nan':
+                text_content = ''
+            
+            # 创建记录
             record = {
-                'filename': str(row.get('filename', '')),
-                'text_content': str(row.get('text_content', '')),
+                'filename': filename,
+                'text_content': text_content,
                 'last_updated': datetime.now().isoformat()
             }
             
-            # 处理关键词（支持逗号分隔）
+            # 处理关键词
             keywords_str = str(row.get('keywords', ''))
-            record['keywords'] = [kw.strip() for kw in keywords_str.split(',') if kw.strip()]
+            if keywords_str.lower() != 'nan':
+                record['keywords'] = [kw.strip() for kw in keywords_str.split(',') if kw.strip()]
+            else:
+                record['keywords'] = []
             
-            # 添加可选字段
+            # 添加其他有效字段
             optional_fields = ['category', 'song_name', 'difficulty', 'event_type', 'description']
             for field in optional_fields:
-                if field in df.columns and not pd.isna(row.get(field, None)):
-                    record[field] = str(row[field])
+                if field in df.columns:
+                    field_value = str(row[field])
+                    if field_value.lower() != 'nan':
+                        record[field] = field_value
             
             records.append(record)
         
@@ -140,11 +160,11 @@ def convert_excel_to_json(excel_path, json_path, data_type):
         with open(json_path, 'w', encoding='utf-8') as f:
             json.dump(records, f, ensure_ascii=False, indent=2)
         
-        print(f"✅ 成功生成: {os.path.basename(json_path)} ({len(records)}条记录)")
+        print(f"✅ 成功生成: {os.path.basename(json_path)} ({len(records)}条有效记录)")
         return True
         
     except Exception as e:
-        print(f"❌ 转换失败 {os.path.basename(excel_path)}: {e}")
+        print(f"❌❌ 转换失败 {os.path.basename(excel_path)}: {e}")
         return False
 
 def backup_existing_json(json_dir):
