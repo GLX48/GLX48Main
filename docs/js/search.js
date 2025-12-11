@@ -6,8 +6,9 @@ class SearchEngine {
         console.log("✅ 搜索引擎就绪");
     }
 
+    // 修改 search 方法，增强文件名匹配
     search(data, query, filterType = 'all') {
-        console.log(`🔍🔍 搜索: "${query}", 过滤类型: ${filterType}`);
+        console.log(`🔍 搜索: "${query}", 过滤类型: ${filterType}`);
         
         if (!data || !Array.isArray(data)) {
             console.warn("⚠️ 搜索数据无效");
@@ -18,35 +19,86 @@ class SearchEngine {
         const fuzzyMatches = [];
 
         data.forEach(item => {
-            const matchResult = this.calculateMatch(item, query, filterType);
+            // 优先进行文件名匹配（特别处理 B.Rise/brise 这种情况）
+            const filenameMatch = this.calculateFilenameMatch(item.filename, query);
             
-            if (matchResult.exact) {
+            if (filenameMatch.score >= 80) {
                 exactMatches.push({
                     ...item,
-                    matchScore: matchResult.score,
-                    matchedTerm: matchResult.matchedTerm,
-                    matchType: matchResult.matchType
+                    matchScore: filenameMatch.score,
+                    matchedTerm: filenameMatch.matchedTerm,
+                    matchType: 'filename'
                 });
-            } else if (matchResult.fuzzy) {
+                return; // 如果文件名匹配度高，跳过其他匹配
+            }
+
+            // 其他类型的匹配（原有逻辑）
+            const otherMatchResult = this.calculateOtherMatches(item, query, filterType);
+            
+            if (otherMatchResult.exact) {
+                exactMatches.push({
+                    ...item,
+                    matchScore: otherMatchResult.score,
+                    matchedTerm: otherMatchResult.matchedTerm,
+                    matchType: otherMatchResult.matchType
+                });
+            } else if (otherMatchResult.fuzzy) {
                 fuzzyMatches.push({
                     ...item,
-                    matchedTerm: matchResult.matchedTerm,
-                    matchScore: matchResult.score,
-                    matchType: matchResult.matchType
+                    matchedTerm: otherMatchResult.matchedTerm,
+                    matchScore: otherMatchResult.score,
+                    matchType: otherMatchResult.matchType
                 });
             }
         });
 
-        // 按匹配度排序
+        // 排序和去重
         exactMatches.sort((a, b) => b.matchScore - a.matchScore);
         fuzzyMatches.sort((a, b) => b.matchScore - a.matchScore);
 
-        console.log(`📊📊 搜索结果: 精确匹配 ${exactMatches.length} 条, 模糊匹配 ${fuzzyMatches.length} 条`);
+        console.log(`📊 搜索结果: 精确匹配 ${exactMatches.length} 条, 模糊匹配 ${fuzzyMatches.length} 条`);
         
         return {
             exact: exactMatches,
-            fuzzy: this.removeDuplicates(fuzzyMatches).slice(0, 10) // 限制模糊建议数量并去重
+            fuzzy: this.removeDuplicates(fuzzyMatches).slice(0, 10)
         };
+    }
+
+    // 新增：其他匹配类型的计算
+    calculateOtherMatches(item, query, filterType) {
+        const searchTerm = this.normalizeSearchTerm(query);
+        let bestScore = 0;
+        let bestMatchTerm = '';
+        let bestMatchType = '';
+
+        // 关键词匹配
+        if ((filterType === 'all' || filterType === 'keywords') && item.keywords) {
+            const keywordResult = this.calculateKeywordsMatch(item.keywords, searchTerm);
+            if (keywordResult.score > bestScore) {
+                bestScore = keywordResult.score;
+                bestMatchTerm = keywordResult.matchedTerm;
+                bestMatchType = 'keywords';
+            }
+        }
+
+        // 内容匹配
+        if ((filterType === 'all' || filterType === 'content') && item.text_content) {
+            const contentResult = this.calculateContentMatch(item.text_content, searchTerm);
+            if (contentResult.score > bestScore) {
+                bestScore = contentResult.score;
+                bestMatchTerm = contentResult.matchedTerm;
+                bestMatchType = 'content';
+            }
+        }
+
+        // 判断匹配类型
+        if (bestScore >= 80) {
+            return { exact: true, fuzzy: false, score: bestScore, matchedTerm: bestMatchTerm, matchType: bestMatchType };
+        } else if (bestScore >= 30) {
+            return { exact: false, fuzzy: true, score: bestScore, matchedTerm: bestMatchTerm, matchType: bestMatchType };
+        } else {
+            return { exact: false, fuzzy: false, score: 0 };
+        }
     }
 
     normalizeSearchTerm(term) {
@@ -215,34 +267,118 @@ class SearchEngine {
         return matrix[b.length][a.length];
     }
 
+    // 在 SearchEngine 类中添加新的匹配方法
     calculateFilenameMatch(filename, searchTerm) {
         if (!filename) return { score: 0, matchedTerm: '' };
         
         const filenameLower = filename.toLowerCase();
         const searchTermLower = searchTerm.toLowerCase();
         
-        // 精确匹配（完全相同的文件名）
+        // 1. 精确匹配（完全相同的文件名）
         if (filenameLower === searchTermLower) {
             return { score: 100, matchedTerm: filename };
         }
         
-        // 移除扩展名后匹配
-        const filenameWithoutExt = filenameLower.replace(/\.[^/.]+$/, "");
-        if (filenameWithoutExt === searchTermLower) {
+        // 2. 移除特殊字符后的匹配（处理 B.Rise -> brise）
+        const normalizedFilename = this.normalizeFilename(filenameLower);
+        const normalizedSearchTerm = this.normalizeFilename(searchTermLower);
+        
+        if (normalizedFilename === normalizedSearchTerm) {
             return { score: 95, matchedTerm: filename };
         }
         
-        // 文件名以搜索词开头
-        if (filenameLower.startsWith(searchTermLower)) {
+        // 3. 包含匹配（处理部分匹配）
+        if (normalizedFilename.includes(normalizedSearchTerm)) {
             return { score: 85, matchedTerm: filename };
         }
         
-        // 文件名包含搜索词
-        if (filenameLower.includes(searchTermLower)) {
-            return { score: 70, matchedTerm: filename };
+        // 4. 相似度匹配（处理 brise 和 B.Rise 的相似性）
+        const similarityScore = this.calculateFilenameSimilarity(filenameLower, searchTermLower);
+        if (similarityScore >= 70) {
+            return { score: similarityScore, matchedTerm: filename };
         }
         
         return { score: 0, matchedTerm: '' };
+    }
+
+
+    // 新增：文件名规范化方法
+    normalizeFilename(filename) {
+        if (!filename) return '';
+        
+        return filename
+            .toLowerCase()
+            .replace(/[._\-]/g, '')  // 移除点号、下划线、连字符
+            .replace(/\s+/g, '')     // 移除所有空格
+            .trim();
+    }
+
+    // 新增：文件名相似度计算
+    calculateFilenameSimilarity(filename, searchTerm) {
+        // 规范化处理
+        const normalizedFile = this.normalizeFilename(filename);
+        const normalizedSearch = this.normalizeFilename(searchTerm);
+        
+        // 直接匹配
+        if (normalizedFile === normalizedSearch) return 100;
+        
+        // 包含关系
+        if (normalizedFile.includes(normalizedSearch) || normalizedSearch.includes(normalizedFile)) {
+            return 80;
+        }
+        
+        // 编辑距离相似度
+        const distance = this.levenshteinDistance(normalizedFile, normalizedSearch);
+        const maxLength = Math.max(normalizedFile.length, normalizedSearch.length);
+        const similarity = Math.max(0, 100 - (distance / maxLength) * 100);
+        
+        // 针对特定模式进行加分
+        let bonus = 0;
+        
+        // 如果一个是另一个的缩写变体（如 B.Rise -> brise）
+        if (this.isAbbreviationVariant(normalizedFile, normalizedSearch)) {
+            bonus += 15;
+        }
+        
+        // 如果共享主要字符（如都包含"rise"）
+        if (this.shareMainCharacters(normalizedFile, normalizedSearch)) {
+            bonus += 10;
+        }
+        
+        return Math.min(100, similarity + bonus);
+    }
+
+    // 新增：检查是否是缩写变体
+    isAbbreviationVariant(str1, str2) {
+        if (str1.length < 2 || str2.length < 2) return false;
+        
+        // 检查点号分隔的缩写模式（如 B.Rise）
+        const dotPattern = /^([a-z])\.([a-z]+)$/;
+        const match1 = str1.match(dotPattern);
+        const match2 = str2.match(dotPattern);
+        
+        if (match1 && !match2) {
+            // str1 是 B.Rise 格式，str2 是普通格式
+            const combined = match1[1] + match1[2]; // 变成 brise
+            return combined === str2;
+        }
+        
+        if (match2 && !match1) {
+            // str2 是 B.Rise 格式，str1 是普通格式
+            const combined = match2[1] + match2[2];
+            return combined === str1;
+        }
+        
+        return false;
+    }
+
+    // 新增：检查是否共享主要字符
+    shareMainCharacters(str1, str2) {
+        // 移除元音字母，比较辅音骨架
+        const skeleton1 = str1.replace(/[aeiou]/g, '');
+        const skeleton2 = str2.replace(/[aeiou]/g, '');
+        
+        return skeleton1 === skeleton2 && skeleton1.length >= 2;
     }
 
     calculateKeywordsMatch(keywords, searchTerm) {
