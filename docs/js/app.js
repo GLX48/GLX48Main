@@ -22,7 +22,7 @@ class App {
 
     async loadData() {
         try {
-            console.log(`📖 正在加载 ${this.currentDataType} 数据...`);
+            console.log(`📖📖 正在加载 ${this.currentDataType} 数据...`);
             
             const basePath = this.getBasePath();
             const jsonPath = `${basePath}/data/json/${this.currentDataType}.json`;
@@ -35,13 +35,13 @@ class App {
             }
             
             const data = await response.json();
-            console.log(`✅ 成功加载数据:`, data);
+            console.log(`✅ 成功加载数据，共 ${data.length} 条记录:`, data);
             
             this.currentData = data;
             this.displayData();
             
         } catch (error) {
-            console.error('❌ 数据加载失败:', error);
+            console.error('❌❌ 数据加载失败:', error);
             this.showError(`数据加载失败: ${error.message}`);
         }
     }
