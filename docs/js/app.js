@@ -300,7 +300,7 @@ class App {
         
         // 设置文本信息
         document.getElementById('modal-filename').textContent = item.filename;
-        document.getElementById('modal-content').textContent = item.text_content || '暂无内容描述';
+        //document.getElementById('modal-content').textContent = item.text_content || '暂无内容描述';
         
         // 设置关键词
         const keywordsContainer = document.getElementById('modal-keywords');
