@@ -489,9 +489,9 @@ class App {
         this.updateImageCounter(index);
         
         // 添加导航控制（如果有多张图片）
-        if (this.searchResults.length > 1) {
-            this.addNavigationControls(index);
-        }
+        // if (this.searchResults.length > 1) {
+        //     this.addNavigationControls(index);
+        // }
     }
 
     updateImageCounter(index) {
@@ -515,7 +515,7 @@ class App {
         
         // 清理控制元素
         this.removeImageCounter();
-        this.removeNavigationControls();
+        // this.removeNavigationControls();
         
         // 重置状态
         this.imageZoomLevel = 1;
@@ -523,12 +523,12 @@ class App {
         this.isDragging = false;
     }
 
-    removeNavigationControls() {
-        const navControls = document.querySelector('.nav-controls');
-        if (navControls) {
-            navControls.remove();
-        }
-    }
+    // removeNavigationControls() {
+    //     const navControls = document.querySelector('.nav-controls');
+    //     if (navControls) {
+    //         navControls.remove();
+    //     }
+    // }
     
     // 上一张图片
     prevImage() {
@@ -872,16 +872,16 @@ class App {
     }
 
     // 添加导航控制
-    addNavigationControls(index) {
-        const navControls = document.createElement('div');
-        navControls.className = 'nav-controls';
-        navControls.innerHTML = `
-            <button class="nav-btn prev" onclick="app.prevImage()">‹</button>
-            <button class="nav-btn next" onclick="app.nextImage()">›</button>
-        `;
+    // addNavigationControls(index) {
+    //     const navControls = document.createElement('div');
+    //     navControls.className = 'nav-controls';
+    //     navControls.innerHTML = `
+    //         <button class="nav-btn prev" onclick="app.prevImage()">‹</button>
+    //         <button class="nav-btn next" onclick="app.nextImage()">›</button>
+    //     `;
         
-        document.querySelector('.modal-content').appendChild(navControls);
-    }
+    //     document.querySelector('.modal-content').appendChild(navControls);
+    // }
 
     // 添加图片计数器
     addImageCounter(index) {
