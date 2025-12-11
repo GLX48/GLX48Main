@@ -11,7 +11,7 @@
         <!-- 侧边栏 -->
         <aside class="sidebar">
             <div class="logo">
-                <h1>🎵 GLX48 应援查询</h1>
+                <h1>🎵🎵 GLX48 应援查询</h1>
             </div>
             <nav class="nav">
                 <ul>
@@ -73,7 +73,8 @@
             <div class="image-container">
                 <!-- 图片将在这里显示 -->
             </div>
-            <div class="nav-controls">
+            <!-- 导航控制：只保留一个计数器，移除重复的计数器 -->
+            <div class="nav-controls" id="nav-controls">
                 <button class="nav-btn prev" onclick="app.prevImage()">‹</button>
                 <div class="counter" id="image-counter">1/1</div>
                 <button class="nav-btn next" onclick="app.nextImage()">›</button>

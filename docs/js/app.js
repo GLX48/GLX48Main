@@ -154,7 +154,20 @@ class App {
                 }
             });
         }
-        
+
+        // 模糊搜索建议的事件监听（使用事件委托）
+        const fuzzyContainer = document.getElementById('fuzzy-suggestions');
+        if (fuzzyContainer) {
+            fuzzyContainer.addEventListener('click', (e) => {
+                const suggestionItem = e.target.closest('.suggestion-item');
+                if (suggestionItem) {
+                    const term = suggestionItem.getAttribute('data-term');
+                    if (term) {
+                        this.useSuggestion(term);
+                    }
+                }
+            });
+        }
         console.log("✅ 事件监听器设置完成");
     }
 
@@ -279,21 +292,41 @@ class App {
     displayFuzzySuggestions(suggestions) {
         const container = document.getElementById('fuzzy-suggestions');
         if (!container) {
-            console.error("❌ 找不到 fuzzy-suggestions 容器");
+            console.error("❌❌ 找不到 fuzzy-suggestions 容器");
             return;
         }
-
+    
         if (!suggestions || suggestions.length === 0) {
             container.innerHTML = '<p class="no-results">没有找到模糊匹配的建议</p>';
             return;
         }
-
+    
         container.innerHTML = suggestions.map(item => `
-            <div class="suggestion-item" onclick="app.useSuggestion('${this.escapeHtml(item.matchedTerm)}')">
+            <div class="suggestion-item" data-term="${this.escapeHtml(item.matchedTerm)}">
                 <strong>${this.escapeHtml(item.matchedTerm)}</strong>
                 <span class="suggestion-file">(${this.escapeHtml(item.filename)})</span>
             </div>
         `).join('');
+    
+        // 添加事件监听器
+        this.setupSuggestionEventListeners();
+    }
+
+    // 新增：设置建议项事件监听器
+    setupSuggestionEventListeners() {
+        const container = document.getElementById('fuzzy-suggestions');
+        if (!container) return;
+
+        // 使用事件委托来处理动态生成的元素
+        container.addEventListener('click', (e) => {
+            const suggestionItem = e.target.closest('.suggestion-item');
+            if (suggestionItem) {
+                const term = suggestionItem.getAttribute('data-term');
+                if (term) {
+                    this.useSuggestion(term);
+                }
+            }
+        });
     }
 
     // 打开图片预览模态框
@@ -305,7 +338,7 @@ class App {
     
         const item = this.searchResults[index];
         const imageUrl = this.getImageUrl(item.filename);
-        console.log(`🖼🖼🖼️ 打开图片预览: ${imageUrl}`);
+        console.log(`🖼🖼🖼🖼🖼🖼🖼🖼🖼️ 打开图片预览: ${imageUrl}`);
         
         // 设置模态框标题
         document.getElementById('modal-title').textContent = item.filename;
@@ -346,15 +379,15 @@ class App {
                 this.addNavigationControls(index);
             }
             
-            // 添加图片计数器
-            this.addImageCounter(index);
+            // 更新计数器文本（使用HTML中已有的计数器）
+            this.updateImageCounter(index);
         };
         
         img.onerror = () => {
-            console.error('❌❌ 模态框图片加载失败');
+            console.error('❌❌❌❌ 模态框图片加载失败');
             zoomContainer.innerHTML = `
                 <div class="image-error">
-                    <div class="error-icon">❌❌</div>
+                    <div class="error-icon">❌❌❌❌</div>
                     <h3>无法加载图片</h3>
                     <p>文件: ${this.escapeHtml(item.filename)}</p>
                     <p>路径: ${imageUrl}</p>
@@ -381,13 +414,27 @@ class App {
         this.imagePosition = { x: 0, y: 0 };
         this.isDragging = false;
         
-        // 添加图片计数器（只添加一次）
-        this.addImageCounter(index);
+        // 更新计数器（使用HTML中已有的计数器）
+        this.updateImageCounter(index);
         
         // 添加导航控制（如果有多张图片）
         if (this.searchResults.length > 1) {
             this.addNavigationControls(index);
         }
+    }
+
+    updateImageCounter(index) {
+        const counterElement = document.getElementById('image-counter');
+        if (counterElement) {
+            counterElement.textContent = `${index + 1} / ${this.searchResults.length}`;
+        }
+    }
+    
+    
+    // 修改：移除 addImageCounter 方法中的动态创建，改为更新现有计数器
+    addImageCounter(index) {
+        // 直接更新HTML中已有的计数器
+        this.updateImageCounter(index);
     }
 
     // 关闭模态框
@@ -422,6 +469,7 @@ class App {
         }
         
         this.openImagePreview(this.currentImageIndex);
+        this.updateImageCounter(this.currentImageIndex); // 更新计数器
     }
 
     // 下一张图片
@@ -434,7 +482,9 @@ class App {
         }
         
         this.openImagePreview(this.currentImageIndex);
+        this.updateImageCounter(this.currentImageIndex); // 更新计数器
     }
+    
 
     // 复制内容到剪贴板
     copyContent(content) {
@@ -499,9 +549,18 @@ class App {
     }
 
     useSuggestion(term) {
-        console.log(`💡 使用建议: ${term}`);
-        document.getElementById('search-input').value = term;
-        this.performSearch();
+        console.log(`💡💡 使用建议: ${term}`);
+        const searchInput = document.getElementById('search-input');
+        if (searchInput) {
+            searchInput.value = term;
+            this.performSearch();
+            
+            // 滚动到精确搜索结果区域
+            const exactResults = document.getElementById('exact-results');
+            if (exactResults) {
+                exactResults.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        }
     }
 
     getImageUrl(filename) {

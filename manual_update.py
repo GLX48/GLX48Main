@@ -225,12 +225,12 @@ def main():
             return
     
     # 备份现有JSON文件
-    print("\n💾 备份现有JSON文件...")
-    backups = backup_existing_json(dirs['json_dir'])
-    if backups:
-        print(f"✅ 已备份{len(backups)}个文件")
-    else:
-        print("ℹ️  无需备份（没有现有JSON文件）")
+    # print("\n💾 备份现有JSON文件...")
+    # backups = backup_existing_json(dirs['json_dir'])
+    # if backups:
+        # print(f"✅ 已备份{len(backups)}个文件")
+    # else:
+        # print("ℹ️  无需备份（没有现有JSON文件）")
     
     # 转换Excel到JSON
     print("\n🔄 开始转换Excel到JSON...")

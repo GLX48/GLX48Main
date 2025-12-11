@@ -413,6 +413,7 @@ body {
     transform: scale(1.1);
 }
 
+/* 计数器样式 */
 .counter {
     color: white;
     font-size: 1.2rem;
@@ -420,6 +421,10 @@ body {
     background: rgba(0, 0, 0, 0.5);
     padding: 8px 16px;
     border-radius: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 80px;
 }
 
 .image-error {
@@ -642,4 +647,32 @@ body {
     font-size: 1.2rem;
     text-shadow: 0 2px 4px rgba(0,0,0,0.5);
     z-index: 10;
+}
+
+/* 添加建议项的悬停样式 */
+.suggestion-item {
+    padding: 12px 15px;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    margin-bottom: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    background: #f8f9fa;
+}
+
+.suggestion-item:hover {
+    background: #3498db;
+    color: white;
+    border-color: #3498db;
+    transform: translateX(5px);
+}
+
+.suggestion-item:hover .suggestion-file {
+    color: #e0e0e0;
+}
+
+.suggestion-file {
+    font-size: 0.9em;
+    color: #7f8c8d;
+    margin-left: 8px;
 }
