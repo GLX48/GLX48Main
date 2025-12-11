@@ -380,6 +380,14 @@ class App {
         this.imageZoomLevel = 1;
         this.imagePosition = { x: 0, y: 0 };
         this.isDragging = false;
+        
+        // 添加图片计数器（只添加一次）
+        this.addImageCounter(index);
+        
+        // 添加导航控制（如果有多张图片）
+        if (this.searchResults.length > 1) {
+            this.addNavigationControls(index);
+        }
     }
 
     // 关闭模态框
@@ -388,11 +396,8 @@ class App {
         document.body.style.overflow = 'auto';
         
         // 清理控制元素
-        const navControls = document.querySelector('.nav-controls');
-        const counter = document.querySelector('.image-counter');
-        
-        if (navControls) navControls.remove();
-        if (counter) counter.remove();
+        this.removeImageCounter();
+        this.removeNavigationControls();
         
         // 重置状态
         this.imageZoomLevel = 1;
@@ -400,6 +405,13 @@ class App {
         this.isDragging = false;
     }
 
+    removeNavigationControls() {
+        const navControls = document.querySelector('.nav-controls');
+        if (navControls) {
+            navControls.remove();
+        }
+    }
+    
     // 上一张图片
     prevImage() {
         if (this.searchResults.length <= 1) return;
@@ -585,7 +597,7 @@ class App {
         const zoomIntensity = 0.1;
         const delta = e.deltaY > 0 ? -zoomIntensity : zoomIntensity;
         
-        this.imageZoomLevel = Math.max(0.5, Math.min(3, this.imageZoomLevel + delta));
+        this.imageZoomLevel = Math.max(0.5, Math.min(3, this.imageZoomLevel + delta)); // 最小50%
         this.updateImageTransform();
     }
 
@@ -620,7 +632,7 @@ class App {
             const zoomFactor = currentDistance / this.startDistance;
             this.imageZoomLevel = this.startZoom * zoomFactor;
             
-            // 限制缩放范围
+            // 限制缩放范围（最小50%，最大300%）
             this.imageZoomLevel = Math.max(0.5, Math.min(3, this.imageZoomLevel));
             this.updateImageTransform();
         }
@@ -656,9 +668,24 @@ class App {
 
     // 限制图片位置
     constrainImagePosition() {
-        const maxX = (this.imageZoomLevel - 1) * 100;
-        const maxY = (this.imageZoomLevel - 1) * 100;
+        const container = document.querySelector('.image-zoom-container');
+        const img = container.querySelector('img');
         
+        if (!img) return;
+        
+        // 获取容器和图片的实际尺寸
+        const containerRect = container.parentElement.getBoundingClientRect();
+        const imgRect = img.getBoundingClientRect();
+        
+        // 计算图片缩放后的实际尺寸
+        const imgWidth = imgRect.width;
+        const imgHeight = imgRect.height;
+        
+        // 计算可移动的最大范围
+        const maxX = Math.max(0, (imgWidth - containerRect.width) / 2);
+        const maxY = Math.max(0, (imgHeight - containerRect.height) / 2);
+        
+        // 应用限制
         this.imagePosition.x = Math.max(-maxX, Math.min(maxX, this.imagePosition.x));
         this.imagePosition.y = Math.max(-maxY, Math.min(maxY, this.imagePosition.y));
     }
@@ -676,10 +703,9 @@ class App {
         this.imageZoomLevel = Math.min(3, this.imageZoomLevel + 0.2);
         this.updateImageTransform();
     }
-
-    // 缩小图片
+    
     zoomOut() {
-        this.imageZoomLevel = Math.max(0.5, this.imageZoomLevel - 0.2);
+        this.imageZoomLevel = Math.max(0.5, this.imageZoomLevel - 0.2); // 最小50%
         this.updateImageTransform();
     }
 
@@ -704,12 +730,20 @@ class App {
 
     // 添加图片计数器
     addImageCounter(index) {
+        // 先移除可能存在的旧计数器
+        this.removeImageCounter();
+        
         const counter = document.createElement('div');
         counter.className = 'image-counter';
         counter.textContent = `${index + 1} / ${this.searchResults.length}`;
         document.querySelector('.modal-content').appendChild(counter);
     }
-
+    removeImageCounter() {
+        const existingCounter = document.querySelector('.image-counter');
+        if (existingCounter) {
+            existingCounter.remove();
+        }
+    }
     // 重试加载模态框图片
     retryModalImage(imageUrl, filename) {
         const imageContainer = document.querySelector('.modal .image-container');
