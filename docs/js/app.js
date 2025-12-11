@@ -511,11 +511,6 @@ class App {
                         <p>加载图片中...</p>
                     </div>
                 </div>
-                <div class="zoom-controls">
-                    <button class="zoom-btn zoom-in" onclick="app.zoomIn()">+</button>
-                    <button class="zoom-btn zoom-out" onclick="app.zoomOut()">-</button>
-                    <div class="zoom-level">100%</div>
-                </div>
                 <button class="reset-btn" onclick="app.resetZoom()">重置</button>
             </div>
         `;
