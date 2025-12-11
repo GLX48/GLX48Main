@@ -341,14 +341,16 @@ class App {
                     matchType = '匹配';
             }
             
+            // 关键修复：使用文件名作为搜索目标
             return `
-                <div class="suggestion-item" data-term="${this.escapeHtml(item.matchedTerm)}">
+                <div class="suggestion-item" data-filename="${this.escapeHtml(item.filename)}">
                     <div class="suggestion-header">
                         <strong>${this.escapeHtml(item.filename)}</strong>
                         <span class="suggestion-type">${matchType}</span>
                     </div>
                     <div class="suggestion-content">${suggestionText}</div>
                     <div class="suggestion-score">匹配度: ${Math.round(item.matchScore)}%</div>
+                    <div class="suggestion-hint">点击搜索此文件</div>
                 </div>
             `;
         }).join('');
@@ -362,18 +364,37 @@ class App {
     setupSuggestionEventListeners() {
         const container = document.getElementById('fuzzy-suggestions');
         if (!container) return;
-
+    
         container.addEventListener('click', (e) => {
             const suggestionItem = e.target.closest('.suggestion-item');
             if (suggestionItem) {
-                const term = suggestionItem.getAttribute('data-term');
-                if (term) {
-                    this.useSuggestion(term);
+                // 关键修复：使用文件名进行搜索
+                const filename = suggestionItem.getAttribute('data-filename');
+                if (filename) {
+                    this.searchByFilename(filename);
                 }
             }
         });
     }
 
+    searchByFilename(filename) {
+        console.log(`🔍🔍 通过文件名搜索: ${filename}`);
+        
+        // 设置搜索框值为文件名
+        document.getElementById('search-input').value = filename;
+        
+        // 执行搜索
+        this.performSearch();
+        
+        // 滚动到精确匹配区域
+        setTimeout(() => {
+            const exactResults = document.getElementById('exact-results');
+            if (exactResults) {
+                exactResults.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        }, 100);
+    }
+    
     truncateText(text, maxLength) {
         if (!text || text.length <= maxLength) return text;
         return text.substring(0, maxLength) + '...';

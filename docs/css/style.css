@@ -738,3 +738,15 @@ body {
     border-radius: 8px;
     border: 1px dashed #ddd;
 }
+
+/* 添加点击搜索文件的提示 */
+.suggestion-hint {
+    font-size: 0.8em;
+    color: #7f8c8d;
+    margin-top: 5px;
+    font-style: italic;
+}
+
+.suggestion-item:hover .suggestion-hint {
+    color: rgba(255, 255, 255, 0.8);
+}

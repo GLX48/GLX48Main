@@ -56,8 +56,8 @@ class SearchEngine {
         let bestScore = 0;
         let bestMatchTerm = '';
         let bestMatchType = '';
-
-        // 根据过滤类型进行匹配
+    
+        // 1. 首先检查文件名匹配（最高优先级）
         if (filterType === 'all' || filterType === 'filename') {
             const filenameResult = this.calculateFilenameMatch(item.filename, searchTerm);
             if (filenameResult.score > bestScore) {
@@ -66,35 +66,37 @@ class SearchEngine {
                 bestMatchType = 'filename';
             }
         }
-
-        if ((filterType === 'all' || filterType === 'keywords') && item.keywords) {
-            const keywordResult = this.calculateKeywordsMatch(item.keywords, searchTerm);
-            if (keywordResult.score > bestScore) {
-                bestScore = keywordResult.score;
-                bestMatchTerm = keywordResult.matchedTerm;
-                bestMatchType = 'keywords';
+    
+        // 2. 只有在没有文件名匹配时，才检查其他匹配类型
+        if (bestScore < 70) {
+            if ((filterType === 'all' || filterType === 'keywords') && item.keywords) {
+                const keywordResult = this.calculateKeywordsMatch(item.keywords, searchTerm);
+                if (keywordResult.score > bestScore) {
+                    bestScore = keywordResult.score;
+                    bestMatchTerm = keywordResult.matchedTerm;
+                    bestMatchType = 'keywords';
+                }
+            }
+    
+            if ((filterType === 'all' || filterType === 'content') && item.text_content) {
+                const contentResult = this.calculateContentMatch(item.text_content, searchTerm);
+                if (contentResult.score > bestScore) {
+                    bestScore = contentResult.score;
+                    bestMatchTerm = contentResult.matchedTerm;
+                    bestMatchType = 'content';
+                }
+            }
+    
+            if ((filterType === 'all' || filterType === 'content') && item.song_name) {
+                const songResult = this.calculateSongNameMatch(item.song_name, searchTerm);
+                if (songResult.score > bestScore) {
+                    bestScore = songResult.score;
+                    bestMatchTerm = songResult.matchedTerm;
+                    bestMatchType = 'song_name';
+                }
             }
         }
-
-        if ((filterType === 'all' || filterType === 'content') && item.text_content) {
-            const contentResult = this.calculateContentMatch(item.text_content, searchTerm);
-            if (contentResult.score > bestScore) {
-                bestScore = contentResult.score;
-                bestMatchTerm = contentResult.matchedTerm;
-                bestMatchType = 'content';
-            }
-        }
-
-        // 歌曲名匹配
-        if ((filterType === 'all' || filterType === 'content') && item.song_name) {
-            const songResult = this.calculateSongNameMatch(item.song_name, searchTerm);
-            if (songResult.score > bestScore) {
-                bestScore = songResult.score;
-                bestMatchTerm = songResult.matchedTerm;
-                bestMatchType = 'song_name';
-            }
-        }
-
+    
         // 判断匹配类型
         if (bestScore >= 80) {
             return { 
@@ -116,19 +118,32 @@ class SearchEngine {
             return { exact: false, fuzzy: false, score: 0 };
         }
     }
+    
 
     calculateFilenameMatch(filename, searchTerm) {
         if (!filename) return { score: 0, matchedTerm: '' };
         
         const filenameLower = filename.toLowerCase();
+        const searchTermLower = searchTerm.toLowerCase();
         
-        if (filenameLower === searchTerm) {
+        // 精确匹配（完全相同的文件名）
+        if (filenameLower === searchTermLower) {
             return { score: 100, matchedTerm: filename };
         }
-        if (filenameLower.startsWith(searchTerm)) {
+        
+        // 移除扩展名后匹配
+        const filenameWithoutExt = filenameLower.replace(/\.[^/.]+$/, "");
+        if (filenameWithoutExt === searchTermLower) {
+            return { score: 95, matchedTerm: filename };
+        }
+        
+        // 文件名以搜索词开头
+        if (filenameLower.startsWith(searchTermLower)) {
             return { score: 85, matchedTerm: filename };
         }
-        if (filenameLower.includes(searchTerm)) {
+        
+        // 文件名包含搜索词
+        if (filenameLower.includes(searchTermLower)) {
             return { score: 70, matchedTerm: filename };
         }
         
