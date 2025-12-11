@@ -5,8 +5,8 @@ class App {
     constructor() {
         this.currentDataType = 'single_skill';
         this.currentData = [];
-        this.searchResults = []; // 存储当前搜索结果
-        this.currentSearchQuery = ''; // 存储当前搜索词
+        this.searchResults = [];
+        this.currentSearchQuery = '';
         this.searchEngine = new SearchEngine();
         this.init();
     }
@@ -22,7 +22,6 @@ class App {
         try {
             console.log(`📖 正在加载 ${this.currentDataType} 数据...`);
             
-            // 获取基础路径
             const basePath = this.getBasePath();
             const jsonPath = `${basePath}/data/json/${this.currentDataType}.json`;
             console.log(`📍 JSON路径: ${jsonPath}`);
@@ -64,7 +63,6 @@ class App {
             return;
         }
         
-        // 显示数据统计信息
         container.innerHTML = `
             <div class="data-info">
                 <h3>${this.getDataTypeName()}</h3>
@@ -138,6 +136,32 @@ class App {
             console.warn("⚠️ 搜索元素未找到");
         }
         
+        // 模态框关闭按钮
+        const modalClose = document.getElementById('modal-close');
+        if (modalClose) {
+            modalClose.addEventListener('click', () => {
+                this.closeModal();
+            });
+        }
+        
+        // 点击模态框外部关闭
+        const modal = document.getElementById('image-modal');
+        if (modal) {
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    this.closeModal();
+                }
+            });
+        }
+        
+        // 复制内容按钮
+        const copyBtn = document.getElementById('copy-content-btn');
+        if (copyBtn) {
+            copyBtn.addEventListener('click', () => {
+                this.copyContentToClipboard();
+            });
+        }
+        
         console.log("✅ 事件监听器设置完成");
     }
 
@@ -152,7 +176,7 @@ class App {
         const query = document.getElementById('search-input').value.trim();
         const filterType = document.getElementById('filter-type').value;
         
-        this.currentSearchQuery = query; // 保存搜索词
+        this.currentSearchQuery = query;
 
         if (!query) {
             this.clearSearchResults();
@@ -160,7 +184,7 @@ class App {
         }
 
         const results = this.searchEngine.search(this.currentData, query, filterType);
-        this.searchResults = results.exact; // 保存搜索结果
+        this.searchResults = results.exact;
         this.displaySearchResults(results);
     }
 
@@ -184,7 +208,7 @@ class App {
         }
 
         container.innerHTML = results.map((item, index) => `
-            <div class="image-result" data-index="${index}" data-filename="${this.escapeHtml(item.filename)}">
+            <div class="image-result" data-index="${index}">
                 <div class="image-thumbnail">
                     
                 </div>
@@ -203,7 +227,7 @@ class App {
         container.querySelectorAll('.image-result').forEach((item, index) => {
             item.addEventListener('click', (e) => {
                 if (!e.target.classList.contains('keyword-tag')) {
-                    this.openImageViewer(index);
+                    this.openImagePreview(index);
                 }
             });
         });
@@ -229,6 +253,86 @@ class App {
         `).join('');
     }
 
+    // 打开图片预览模态框
+    openImagePreview(index) {
+        if (!this.searchResults || this.searchResults.length === 0) {
+            this.showError('没有搜索结果可查看');
+            return;
+        }
+
+        const item = this.searchResults[index];
+        console.log(`🖼️ 打开图片预览: ${item.filename}`);
+        
+        // 设置模态框内容
+        document.getElementById('modal-title').textContent = 
+            `${this.currentDataType === 'single_skill' ? '单技' : 'Call本'}预览`;
+        document.getElementById('modal-image').src = this.getImageUrl(item.filename);
+        document.getElementById('modal-image').alt = item.filename;
+        document.getElementById('modal-filename').textContent = item.filename;
+        document.getElementById('modal-content').textContent = item.text_content || '暂无内容描述';
+        
+        // 设置关键词
+        const keywordsContainer = document.getElementById('modal-keywords');
+        keywordsContainer.innerHTML = '';
+        if (item.keywords && item.keywords.length > 0) {
+            item.keywords.forEach(keyword => {
+                const keywordElement = document.createElement('span');
+                keywordElement.className = 'keyword-tag';
+                keywordElement.textContent = keyword;
+                keywordsContainer.appendChild(keywordElement);
+            });
+        }
+        
+        // 显示/隐藏复制按钮
+        const copyBtn = document.getElementById('copy-content-btn');
+        if (this.currentDataType === 'single_skill' && item.text_content) {
+            copyBtn.style.display = 'block';
+            copyBtn.textContent = '复制内容';
+            copyBtn.classList.remove('copied');
+            // 存储当前内容用于复制
+            this.currentContentToCopy = item.text_content;
+        } else {
+            copyBtn.style.display = 'none';
+        }
+        
+        // 显示模态框
+        document.getElementById('image-modal').style.display = 'block';
+        
+        // 阻止背景滚动
+        document.body.style.overflow = 'hidden';
+    }
+
+    // 关闭模态框
+    closeModal() {
+        document.getElementById('image-modal').style.display = 'none';
+        document.body.style.overflow = 'auto';
+    }
+
+    // 复制内容到剪贴板
+    copyContentToClipboard() {
+        if (!this.currentContentToCopy) {
+            this.showError('没有可复制的内容');
+            return;
+        }
+        
+        navigator.clipboard.writeText(this.currentContentToCopy).then(() => {
+            const copyBtn = document.getElementById('copy-content-btn');
+            copyBtn.textContent = '已复制!';
+            copyBtn.classList.add('copied');
+            
+            // 2秒后恢复按钮文本
+            setTimeout(() => {
+                copyBtn.textContent = '复制内容';
+                copyBtn.classList.remove('copied');
+            }, 2000);
+            
+            console.log('✅ 内容已复制到剪贴板');
+        }).catch(err => {
+            console.error('❌ 复制失败:', err);
+            this.showError('复制失败，请手动复制内容');
+        });
+    }
+
     clearSearchResults() {
         const exactContainer = document.getElementById('exact-images');
         const fuzzyContainer = document.getElementById('fuzzy-suggestions');
@@ -252,41 +356,6 @@ class App {
     getImageUrl(filename) {
         const basePath = this.getBasePath();
         return `${basePath}/data/images/${this.currentDataType}/${filename}`;
-    }
-
-    // 修复后的 openImageViewer 方法 - 完全移除 btoa
-    openImageViewer(index) {
-        if (!this.searchResults || this.searchResults.length === 0) {
-            this.showError('没有搜索结果可查看');
-            return;
-        }
-
-        console.log(`🖼️ 打开图片查看器，索引: ${index}, 总数: ${this.searchResults.length}`);
-        
-        try {
-            // 将完整数据存储到 sessionStorage
-            const viewerData = {
-                results: this.searchResults,
-                dataType: this.currentDataType,
-                currentIndex: index,
-                searchQuery: this.currentSearchQuery || ''
-            };
-            
-            // 使用 sessionStorage 存储数据，避免 URL 编码问题
-            sessionStorage.setItem('glx48ViewerData', JSON.stringify(viewerData));
-            console.log('💾 数据已存储到 sessionStorage');
-            
-            // 跳转到图片查看器页面（不传递数据参数）
-            const basePath = this.getBasePath();
-            const viewerUrl = `${basePath}/image-viewer.html`;
-            
-            console.log(`🔗 跳转到: ${viewerUrl}`);
-            window.location.href = viewerUrl;
-            
-        } catch (error) {
-            console.error('❌ 数据存储失败:', error);
-            this.showError('无法打开图片查看器，请检查浏览器设置');
-        }
     }
 
     escapeHtml(text) {
@@ -315,7 +384,6 @@ class App {
             }, 5000);
         }
         
-        // 同时在控制台显示错误
         console.error('应用错误:', message);
     }
 }
@@ -340,3 +408,12 @@ window.useSuggestion = function(term) {
 
 // 确保app在全局可访问
 window.app = app;
+
+// ESC键关闭模态框
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+        if (window.app) {
+            window.app.closeModal();
+        }
+    }
+});
