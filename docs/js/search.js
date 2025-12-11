@@ -49,21 +49,43 @@ class SearchEngine {
         };
     }
 
+    normalizeSearchTerm(term) {
+        if (!term) return '';
+        
+        // 替换常见特殊字符为空格，支持多种分隔符
+        return term.toLowerCase()
+            .replace(/[._\-]/g, ' ')  // 将点号、下划线、连字符转为空格
+            .replace(/\s+/g, ' ')     // 合并多个空格
+            .trim();
+    }
+
     calculateMatch(item, query, filterType) {
-        const searchTerm = query.toLowerCase().trim();
-        if (!searchTerm) return { exact: false, fuzzy: false, score: 0 };
+        const searchTerm = this.normalizeSearchTerm(query);
+        const originalSearchTerm = query.toLowerCase().trim();
+        
+        if (!searchTerm && !originalSearchTerm) return { exact: false, fuzzy: false, score: 0 };
         
         let bestScore = 0;
         let bestMatchTerm = '';
         let bestMatchType = '';
-    
-        // 1. 首先检查文件名匹配（最高优先级）
+
+        // 1. 首先使用原始搜索词进行精确匹配（保持原有逻辑）
         if (filterType === 'all' || filterType === 'filename') {
-            const filenameResult = this.calculateFilenameMatch(item.filename, searchTerm);
+            const filenameResult = this.calculateFilenameMatch(item.filename, originalSearchTerm);
             if (filenameResult.score > bestScore) {
                 bestScore = filenameResult.score;
                 bestMatchTerm = filenameResult.matchedTerm;
                 bestMatchType = 'filename';
+            }
+        }
+
+        // 2. 如果原始搜索词匹配度不高，使用归一化后的搜索词
+        if (bestScore < 70) {
+            const normalizedResults = this.calculateNormalizedMatch(item, searchTerm, filterType);
+            if (normalizedResults.score > bestScore) {
+                bestScore = normalizedResults.score;
+                bestMatchTerm = normalizedResults.matchedTerm;
+                bestMatchType = normalizedResults.matchType;
             }
         }
     
@@ -119,6 +141,79 @@ class SearchEngine {
         }
     }
     
+
+    calculateNormalizedMatch(item, normalizedTerm, filterType) {
+        let bestScore = 0;
+        let bestMatchTerm = '';
+        let bestMatchType = '';
+    
+        // 文件名归一化匹配
+        if (filterType === 'all' || filterType === 'filename') {
+            const normalizedFilename = this.normalizeSearchTerm(item.filename);
+            if (normalizedFilename.includes(normalizedTerm)) {
+                const score = this.calculateSimilarity(normalizedFilename, normalizedTerm);
+                if (score > bestScore) {
+                    bestScore = score;
+                    bestMatchTerm = item.filename;
+                    bestMatchType = 'filename';
+                }
+            }
+        }
+
+        // 关键词归一化匹配
+        if ((filterType === 'all' || filterType === 'keywords') && item.keywords) {
+            for (const keyword of item.keywords) {
+                const normalizedKeyword = this.normalizeSearchTerm(keyword);
+                if (normalizedKeyword.includes(normalizedTerm)) {
+                    const score = this.calculateSimilarity(normalizedKeyword, normalizedTerm);
+                    if (score > bestScore) {
+                        bestScore = score;
+                        bestMatchTerm = keyword;
+                        bestMatchType = 'keywords';
+                    }
+                }
+            }
+        }
+    
+        return { score: bestScore, matchedTerm: bestMatchTerm, matchType: bestMatchType };
+    }
+
+    // 新增相似度计算函数
+    calculateSimilarity(text, searchTerm) {
+        if (text === searchTerm) return 100;
+        if (text.startsWith(searchTerm)) return 85;
+        if (text.includes(searchTerm)) return 70;
+        
+        // 计算编辑距离相似度
+        const distance = this.levenshteinDistance(text, searchTerm);
+        const maxLength = Math.max(text.length, searchTerm.length);
+        return Math.max(0, 100 - (distance / maxLength) * 100);
+    }
+
+    // 莱文斯坦距离算法
+    levenshteinDistance(a, b) {
+        const matrix = [];
+        for (let i = 0; i <= b.length; i++) {
+            matrix[i] = [i];
+        }
+        for (let j = 0; j <= a.length; j++) {
+            matrix[0][j] = j;
+        }
+        for (let i = 1; i <= b.length; i++) {
+            for (let j = 1; j <= a.length; j++) {
+                if (b.charAt(i - 1) === a.charAt(j - 1)) {
+                    matrix[i][j] = matrix[i - 1][j - 1];
+                } else {
+                    matrix[i][j] = Math.min(
+                        matrix[i - 1][j - 1] + 1,
+                        matrix[i][j - 1] + 1,
+                        matrix[i - 1][j] + 1
+                    );
+                }
+            }
+        }
+        return matrix[b.length][a.length];
+    }
 
     calculateFilenameMatch(filename, searchTerm) {
         if (!filename) return { score: 0, matchedTerm: '' };

@@ -750,3 +750,71 @@ body {
 .suggestion-item:hover .suggestion-hint {
     color: rgba(255, 255, 255, 0.8);
 }
+
+/* 模糊搜索建议容器 */
+.fuzzy-suggestions-container {
+    margin-top: 20px;
+}
+
+.suggestion-section {
+    margin-bottom: 25px;
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border-left: 4px solid #007bff;
+}
+
+.suggestion-section h4 {
+    margin: 0 0 12px 0;
+    color: #495057;
+    font-size: 16px;
+    font-weight: 600;
+}
+
+/* 关键词建议按钮 */
+.keyword-suggestions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 15px;
+}
+
+.keyword-suggestion-btn {
+    background: #e3f2fd;
+    border: 1px solid #bbdefb;
+    color: #1976d2;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.keyword-suggestion-btn:hover {
+    background: #bbdefb;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* 建议项操作按钮 */
+.suggestion-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.suggestion-action-btn {
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    color: #6c757d;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.suggestion-action-btn:hover {
+    background: #e9ecef;
+    color: #495057;
+}

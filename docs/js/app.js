@@ -298,7 +298,7 @@ class App {
     displayFuzzySuggestions(suggestions) {
         const container = document.getElementById('fuzzy-suggestions');
         if (!container) {
-            console.error("❌❌ 找不到 fuzzy-suggestions 容器");
+            console.error("❌❌❌❌ 找不到 fuzzy-suggestions 容器");
             return;
         }
     
@@ -318,47 +318,134 @@ class App {
             return;
         }
     
-        container.innerHTML = filteredSuggestions.map(item => {
-            let suggestionText = '';
-            let matchType = '';
-            
-            // 根据匹配类型显示不同的文本
-            switch (item.matchType) {
-                case 'content':
-                    suggestionText = `内容包含: "${this.truncateText(item.matchedTerm, 30)}"`;
-                    matchType = '内容匹配';
-                    break;
-                case 'song_name':
-                    suggestionText = `歌曲名: ${item.matchedTerm}`;
-                    matchType = '歌曲名';
-                    break;
-                case 'keywords':
-                    suggestionText = `关键词: ${item.matchedTerm}`;
-                    matchType = '关键词';
-                    break;
-                default:
-                    suggestionText = `匹配: ${item.matchedTerm}`;
-                    matchType = '匹配';
-            }
-            
-            // 关键修复：使用文件名作为搜索目标
-            return `
-                <div class="suggestion-item" data-filename="${this.escapeHtml(item.filename)}">
-                    <div class="suggestion-header">
-                        <strong>${this.escapeHtml(item.filename)}</strong>
-                        <span class="suggestion-type">${matchType}</span>
+        // 提取独特的搜索关键词建议
+        const keywordSuggestions = this.extractKeywordSuggestions(filteredSuggestions);
+        
+        let html = '<div class="fuzzy-suggestions-container">';
+        
+        // 添加关键词搜索建议
+        if (keywordSuggestions.length > 0) {
+            html += `
+                <div class="suggestion-section">
+                    <h4>💡 尝试搜索这些关键词：</h4>
+                    <div class="keyword-suggestions">
+                        ${keywordSuggestions.map(keyword => `
+                            <button class="keyword-suggestion-btn" 
+                                    onclick="app.searchKeyword('${this.escapeHtml(keyword)}')">
+                                ${this.escapeHtml(keyword)}
+                            </button>
+                        `).join('')}
                     </div>
-                    <div class="suggestion-content">${suggestionText}</div>
-                    <div class="suggestion-score">匹配度: ${Math.round(item.matchScore)}%</div>
-                    <div class="suggestion-hint">点击搜索此文件</div>
                 </div>
             `;
-        }).join('');
+        }
+    
+        // 原有的文件匹配建议
+        html += `
+            <div class="suggestion-section">
+                <h4>📄 相关文件：</h4>
+                ${filteredSuggestions.map(item => {
+                    let suggestionText = '';
+                    let matchType = '';
+                    
+                    switch (item.matchType) {
+                        case 'content':
+                            suggestionText = `内容包含: "${this.truncateText(item.matchedTerm, 30)}"`;
+                            matchType = '内容匹配';
+                            break;
+                        case 'song_name':
+                            suggestionText = `歌曲名: ${item.matchedTerm}`;
+                            matchType = '歌曲名';
+                            break;
+                        case 'keywords':
+                            suggestionText = `关键词: ${item.matchedTerm}`;
+                            matchType = '关键词';
+                            break;
+                        default:
+                            suggestionText = `匹配: ${item.matchedTerm}`;
+                            matchType = '匹配';
+                    }
+                    
+                    return `
+                        <div class="suggestion-item" data-filename="${this.escapeHtml(item.filename)}">
+                            <div class="suggestion-header">
+                                <strong>${this.escapeHtml(item.filename)}</strong>
+                                <span class="suggestion-type">${matchType}</span>
+                            </div>
+                            <div class="suggestion-content">${suggestionText}</div>
+                            <div class="suggestion-score">匹配度: ${Math.round(item.matchScore)}%</div>
+                            <div class="suggestion-actions">
+                                <button class="suggestion-action-btn" 
+                                        onclick="app.searchByFilename('${this.escapeHtml(item.filename)}')">
+                                    搜索此文件
+                                </button>
+                                <button class="suggestion-action-btn" 
+                                        onclick="app.searchKeyword('${this.escapeHtml(item.matchedTerm)}')">
+                                    搜索匹配内容
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                }).join('')}
+            </div>
+        `;
+        
+        html += '</div>';
+        container.innerHTML = html;
     
         // 设置事件监听器
         this.setupSuggestionEventListeners();
     }
     
+
+    // 新增方法：从模糊匹配中提取关键词建议
+    extractKeywordSuggestions(suggestions) {
+        const keywords = new Set();
+        
+        suggestions.forEach(item => {
+            if (item.matchType === 'keywords' && item.matchedTerm) {
+                // 直接使用匹配到的关键词
+                keywords.add(item.matchedTerm);
+            } else if (item.matchType === 'content' && item.matchedTerm) {
+                // 从内容匹配中提取有意义的短语
+                const extractedKeywords = this.extractKeywordsFromContent(item.matchedTerm);
+                extractedKeywords.forEach(keyword => keywords.add(keyword));
+            } else if (item.matchType === 'song_name' && item.matchedTerm) {
+                // 歌曲名作为关键词
+                keywords.add(item.matchedTerm);
+            }
+        });
+        
+        // 限制关键词数量并按长度排序（优先显示短而精确的关键词）
+        return Array.from(keywords)
+            .filter(keyword => keyword.length >= 2 && keyword.length <= 20)
+            .sort((a, b) => a.length - b.length)
+            .slice(0, 8); // 最多显示8个关键词建议
+    }
+
+    // 新增方法：从内容中提取关键词
+    extractKeywordsFromContent(content) {
+        if (!content) return [];
+        
+        const keywords = [];
+        const words = content.split(/[\s,，.。!！?？;；]+/); // 中英文标点分割
+        
+        words.forEach(word => {
+            const cleanWord = word.trim();
+            if (cleanWord.length >= 2 && cleanWord.length <= 10) {
+                // 过滤掉无意义的词和过于常见的词
+                const commonWords = ['的', '了', '在', '是', '我', '有', '和', '就', '不', '人', '都', '一', '一个', '上', '也', '很', '到', '说', '要', '去', '你', '会', '着', '没有', '看', '好', '自己', '知道', '这样', '就是', '但是', '可以', '因为', '如果', '然后', '现在', '已经', '觉得', '真的', '这个', '那个', '什么', '怎么', '为什么', '怎么', '怎么样'];
+                
+                if (!commonWords.includes(cleanWord) && 
+                    !/\d+/.test(cleanWord) && // 排除纯数字
+                    !/^[a-zA-Z]{1}$/.test(cleanWord)) { // 排除单个字母
+                    keywords.push(cleanWord);
+                }
+            }
+        });
+        
+        return keywords;
+    }
 
     // 设置建议项事件监听
     setupSuggestionEventListeners() {
@@ -445,10 +532,6 @@ class App {
             // 初始化手势支持
             this.setupGestureSupport(zoomContainer, img);
             
-            // 添加导航控制（如果有多张图片）
-            // if (this.searchResults.length > 1) {
-            //     this.addNavigationControls(index);
-            // }
             
             // 更新计数器文本（使用HTML中已有的计数器）
             this.updateImageCounter(index);
@@ -488,10 +571,6 @@ class App {
         // 更新计数器（使用HTML中已有的计数器）
         this.updateImageCounter(index);
         
-        // 添加导航控制（如果有多张图片）
-        // if (this.searchResults.length > 1) {
-        //     this.addNavigationControls(index);
-        // }
     }
 
     updateImageCounter(index) {
@@ -522,13 +601,6 @@ class App {
         this.imagePosition = { x: 0, y: 0 };
         this.isDragging = false;
     }
-
-    // removeNavigationControls() {
-    //     const navControls = document.querySelector('.nav-controls');
-    //     if (navControls) {
-    //         navControls.remove();
-    //     }
-    // }
     
     // 上一张图片
     prevImage() {
@@ -870,18 +942,6 @@ class App {
         this.imagePosition = { x: 0, y: 0 };
         this.updateImageTransform();
     }
-
-    // 添加导航控制
-    // addNavigationControls(index) {
-    //     const navControls = document.createElement('div');
-    //     navControls.className = 'nav-controls';
-    //     navControls.innerHTML = `
-    //         <button class="nav-btn prev" onclick="app.prevImage()">‹</button>
-    //         <button class="nav-btn next" onclick="app.nextImage()">›</button>
-    //     `;
-        
-    //     document.querySelector('.modal-content').appendChild(navControls);
-    // }
 
     // 添加图片计数器
     addImageCounter(index) {
