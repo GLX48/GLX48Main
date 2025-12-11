@@ -446,9 +446,9 @@ class App {
             this.setupGestureSupport(zoomContainer, img);
             
             // 添加导航控制（如果有多张图片）
-            if (this.searchResults.length > 1) {
-                this.addNavigationControls(index);
-            }
+            // if (this.searchResults.length > 1) {
+            //     this.addNavigationControls(index);
+            // }
             
             // 更新计数器文本（使用HTML中已有的计数器）
             this.updateImageCounter(index);
