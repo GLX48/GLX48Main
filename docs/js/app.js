@@ -212,13 +212,12 @@ class App {
 
         container.innerHTML = results.map((item, index) => {
             const imageUrl = this.getImageUrl(item.filename);
+            console.log(`🖼️ 生成缩略图: ${imageUrl}`);
+            
             return `
                 <div class="image-result" data-index="${index}">
                     <div class="image-thumbnail">
-                        <img src="${imageUrl}" 
-                             alt="${this.escapeHtml(item.filename)}"
-                             onerror="this.onerror=null; this.parentElement.innerHTML='<div class=\'image-error\'>图片加载失败</div>';"
-                             onload="this.style.opacity='1'">
+                        
                     </div>
                     <div class="image-info">
                         <h4>${this.escapeHtml(item.filename)}</h4>
@@ -227,6 +226,9 @@ class App {
                                 `<span class="keyword-tag" onclick="event.stopPropagation(); app.searchKeyword('${this.escapeHtml(kw)}')">${this.escapeHtml(kw)}</span>`
                             ).join('') : ''}
                         </div>
+                        ${this.currentDataType === 'single_skill' && item.text_content ? `
+                            <button class="copy-content-btn" onclick="event.stopPropagation(); app.copyContent('${this.escapeHtml(item.text_content)}')">复制内容</button>
+                        ` : ''}
                     </div>
                 </div>
             `;
@@ -235,7 +237,7 @@ class App {
         // 为每个结果添加点击事件
         container.querySelectorAll('.image-result').forEach((item, index) => {
             item.addEventListener('click', (e) => {
-                if (!e.target.classList.contains('keyword-tag')) {
+                if (!e.target.classList.contains('keyword-tag') && !e.target.classList.contains('copy-content-btn')) {
                     this.openImagePreview(index);
                 }
             });
@@ -262,7 +264,7 @@ class App {
         `).join('');
     }
 
-    // 打开图片预览模态框
+    // 打开图片预览模态框 - 简化版，只显示图片
     openImagePreview(index) {
         if (!this.searchResults || this.searchResults.length === 0) {
             this.showError('没有搜索结果可查看');
@@ -273,24 +275,21 @@ class App {
         const imageUrl = this.getImageUrl(item.filename);
         console.log(`🖼️ 打开图片预览: ${imageUrl}`);
         
-        // 设置模态框内容
-        document.getElementById('modal-title').textContent = 
-            `${this.currentDataType === 'single_skill' ? '单技' : 'Call本'}预览`;
+        // 创建图片元素
+        const imageContainer = document.querySelector('.modal .image-container');
+        imageContainer.innerHTML = `
+            
+        `;
         
-        // 设置图片
-        const modalImage = document.getElementById('modal-image');
-        modalImage.src = imageUrl;
-        modalImage.alt = item.filename;
-        
-        // 显示加载状态
-        modalImage.style.opacity = '0';
-        modalImage.onload = () => {
-            modalImage.style.opacity = '1';
+        const img = new Image();
+        img.onload = () => {
+            console.log('✅ 模态框图片加载成功');
+            img.style.opacity = '1';
         };
         
-        modalImage.onerror = () => {
-            modalImage.style.display = 'none';
-            document.querySelector('.image-container').innerHTML = `
+        img.onerror = () => {
+            console.error('❌ 模态框图片加载失败');
+            imageContainer.innerHTML = `
                 <div class="image-error">
                     无法加载图片: ${this.escapeHtml(item.filename)}<br>
                     <small>请检查图片文件是否存在: ${imageUrl}</small>
@@ -298,33 +297,12 @@ class App {
             `;
         };
         
-        // 设置文本信息
-        document.getElementById('modal-filename').textContent = item.filename;
-        //document.getElementById('modal-content').textContent = item.text_content || '暂无内容描述';
+        img.src = imageUrl;
+        img.alt = item.filename;
+        img.style.opacity = '0';
+        img.style.transition = 'opacity 0.3s ease';
         
-        // 设置关键词
-        const keywordsContainer = document.getElementById('modal-keywords');
-        keywordsContainer.innerHTML = '';
-        if (item.keywords && item.keywords.length > 0) {
-            item.keywords.forEach(keyword => {
-                const keywordElement = document.createElement('span');
-                keywordElement.className = 'keyword-tag';
-                keywordElement.textContent = keyword;
-                keywordsContainer.appendChild(keywordElement);
-            });
-        }
-        
-        // 显示/隐藏复制按钮
-        const copyBtn = document.getElementById('copy-content-btn');
-        if (this.currentDataType === 'single_skill' && item.text_content) {
-            copyBtn.style.display = 'block';
-            copyBtn.textContent = '复制内容';
-            copyBtn.classList.remove('copied');
-            // 存储当前内容用于复制
-            this.currentContentToCopy = item.text_content;
-        } else {
-            copyBtn.style.display = 'none';
-        }
+        imageContainer.appendChild(img);
         
         // 显示模态框
         document.getElementById('image-modal').style.display = 'block';
@@ -339,29 +317,53 @@ class App {
         document.body.style.overflow = 'auto';
     }
 
-    // 复制内容到剪贴板
-    copyContentToClipboard() {
-        if (!this.currentContentToCopy) {
+    // 复制内容到剪贴板 - 从搜索结果直接调用
+    copyContent(content) {
+        if (!content) {
             this.showError('没有可复制的内容');
             return;
         }
         
-        navigator.clipboard.writeText(this.currentContentToCopy).then(() => {
-            const copyBtn = document.getElementById('copy-content-btn');
-            copyBtn.textContent = '已复制!';
-            copyBtn.classList.add('copied');
-            
-            // 2秒后恢复按钮文本
-            setTimeout(() => {
-                copyBtn.textContent = '复制内容';
-                copyBtn.classList.remove('copied');
-            }, 2000);
-            
+        // 解码HTML实体
+        const tempElement = document.createElement('textarea');
+        tempElement.innerHTML = content;
+        const decodedContent = tempElement.value;
+        
+        navigator.clipboard.writeText(decodedContent).then(() => {
+            this.showTemporaryMessage('内容已复制到剪贴板');
             console.log('✅ 内容已复制到剪贴板');
         }).catch(err => {
             console.error('❌ 复制失败:', err);
             this.showError('复制失败，请手动复制内容');
         });
+    }
+
+    // 显示临时消息
+    showTemporaryMessage(message) {
+        // 创建临时消息元素
+        const messageElement = document.createElement('div');
+        messageElement.textContent = message;
+        messageElement.style.cssText = `
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 15px 25px;
+            border-radius: 5px;
+            z-index: 1001;
+            font-size: 16px;
+        `;
+        
+        document.body.appendChild(messageElement);
+        
+        // 2秒后移除消息
+        setTimeout(() => {
+            if (messageElement.parentNode) {
+                messageElement.parentNode.removeChild(messageElement);
+            }
+        }, 2000);
     }
 
     clearSearchResults() {
@@ -434,6 +436,12 @@ window.searchKeyword = function(keyword) {
 window.useSuggestion = function(term) {
     if (window.app) {
         window.app.useSuggestion(term);
+    }
+};
+
+window.copyContent = function(content) {
+    if (window.app) {
+        window.app.copyContent(content);
     }
 };
 
