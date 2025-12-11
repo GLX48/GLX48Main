@@ -106,9 +106,9 @@ def create_sample_excel_files(excel_dir):
         return False
 
 def convert_excel_to_json(excel_path, json_path, data_type):
-    """将Excel文件转换为JSON格式 - 简化修复版本"""
+    """将Excel文件转换为JSON格式 - 支持多种分隔符的修复版本"""
     try:
-        print(f"\n📖📖 正在读取: {os.path.basename(excel_path)}")
+        print(f"\n📖📖📖📖 正在读取: {os.path.basename(excel_path)}")
         
         # 读取Excel文件
         df = pd.read_excel(excel_path)
@@ -139,10 +139,14 @@ def convert_excel_to_json(excel_path, json_path, data_type):
                 'last_updated': datetime.now().isoformat()
             }
             
-            # 处理关键词
+            # 处理关键词 - 支持多种分隔符（不包含空格）
             keywords_str = str(row.get('keywords', ''))
             if keywords_str.lower() != 'nan':
-                record['keywords'] = [kw.strip() for kw in keywords_str.split(',') if kw.strip()]
+                # 使用多种分隔符进行分割：中文逗号、英文逗号、中文顿号
+                import re
+                # 使用正则表达式分割多种分隔符（不包含空格）
+                keywords_list = re.split(r'[，,、]+', keywords_str)
+                record['keywords'] = [kw.strip() for kw in keywords_list if kw.strip()]
             else:
                 record['keywords'] = []
             
@@ -164,8 +168,9 @@ def convert_excel_to_json(excel_path, json_path, data_type):
         return True
         
     except Exception as e:
-        print(f"❌❌ 转换失败 {os.path.basename(excel_path)}: {e}")
+        print(f"❌❌❌❌ 转换失败 {os.path.basename(excel_path)}: {e}")
         return False
+
 
 def backup_existing_json(json_dir):
     """备份现有的JSON文件"""
