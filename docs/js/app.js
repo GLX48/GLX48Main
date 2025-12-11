@@ -8,6 +8,7 @@ class App {
         this.searchResults = [];
         this.currentSearchQuery = '';
         this.searchEngine = new SearchEngine();
+        this.currentContentToCopy = '';
         this.init();
     }
 
@@ -22,6 +23,7 @@ class App {
         try {
             console.log(`📖 正在加载 ${this.currentDataType} 数据...`);
             
+            // 获取基础路径
             const basePath = this.getBasePath();
             const jsonPath = `${basePath}/data/json/${this.currentDataType}.json`;
             console.log(`📍 JSON路径: ${jsonPath}`);
@@ -63,6 +65,7 @@ class App {
             return;
         }
         
+        // 显示数据统计信息
         container.innerHTML = `
             <div class="data-info">
                 <h3>${this.getDataTypeName()}</h3>
@@ -207,21 +210,27 @@ class App {
             return;
         }
 
-        container.innerHTML = results.map((item, index) => `
-            <div class="image-result" data-index="${index}">
-                <div class="image-thumbnail">
-                    
-                </div>
-                <div class="image-info">
-                    <h4>${this.escapeHtml(item.filename)}</h4>
-                    <div class="image-keywords">
-                        ${item.keywords ? item.keywords.map(kw => 
-                            `<span class="keyword-tag" onclick="event.stopPropagation(); app.searchKeyword('${this.escapeHtml(kw)}')">${this.escapeHtml(kw)}</span>`
-                        ).join('') : ''}
+        container.innerHTML = results.map((item, index) => {
+            const imageUrl = this.getImageUrl(item.filename);
+            return `
+                <div class="image-result" data-index="${index}">
+                    <div class="image-thumbnail">
+                        <img src="${imageUrl}" 
+                             alt="${this.escapeHtml(item.filename)}"
+                             onerror="this.onerror=null; this.parentElement.innerHTML='<div class=\'image-error\'>图片加载失败</div>';"
+                             onload="this.style.opacity='1'">
+                    </div>
+                    <div class="image-info">
+                        <h4>${this.escapeHtml(item.filename)}</h4>
+                        <div class="image-keywords">
+                            ${item.keywords ? item.keywords.map(kw => 
+                                `<span class="keyword-tag" onclick="event.stopPropagation(); app.searchKeyword('${this.escapeHtml(kw)}')">${this.escapeHtml(kw)}</span>`
+                            ).join('') : ''}
+                        </div>
                     </div>
                 </div>
-            </div>
-        `).join('');
+            `;
+        }).join('');
 
         // 为每个结果添加点击事件
         container.querySelectorAll('.image-result').forEach((item, index) => {
@@ -261,13 +270,35 @@ class App {
         }
 
         const item = this.searchResults[index];
-        console.log(`🖼️ 打开图片预览: ${item.filename}`);
+        const imageUrl = this.getImageUrl(item.filename);
+        console.log(`🖼️ 打开图片预览: ${imageUrl}`);
         
         // 设置模态框内容
         document.getElementById('modal-title').textContent = 
             `${this.currentDataType === 'single_skill' ? '单技' : 'Call本'}预览`;
-        document.getElementById('modal-image').src = this.getImageUrl(item.filename);
-        document.getElementById('modal-image').alt = item.filename;
+        
+        // 设置图片
+        const modalImage = document.getElementById('modal-image');
+        modalImage.src = imageUrl;
+        modalImage.alt = item.filename;
+        
+        // 显示加载状态
+        modalImage.style.opacity = '0';
+        modalImage.onload = () => {
+            modalImage.style.opacity = '1';
+        };
+        
+        modalImage.onerror = () => {
+            modalImage.style.display = 'none';
+            document.querySelector('.image-container').innerHTML = `
+                <div class="image-error">
+                    无法加载图片: ${this.escapeHtml(item.filename)}<br>
+                    <small>请检查图片文件是否存在: ${imageUrl}</small>
+                </div>
+            `;
+        };
+        
+        // 设置文本信息
         document.getElementById('modal-filename').textContent = item.filename;
         document.getElementById('modal-content').textContent = item.text_content || '暂无内容描述';
         
