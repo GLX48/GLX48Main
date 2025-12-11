@@ -1,5 +1,5 @@
 // docs/js/search.js
-console.log("🔍 搜索引擎初始化...");
+console.log("🔍🔍 搜索引擎初始化...");
 
 class SearchEngine {
     constructor() {
@@ -7,7 +7,7 @@ class SearchEngine {
     }
 
     search(data, query, filterType = 'all') {
-        console.log(`🔍 搜索: "${query}", 过滤类型: ${filterType}`);
+        console.log(`🔍🔍 搜索: "${query}", 过滤类型: ${filterType}`);
         
         if (!data || !Array.isArray(data)) {
             console.warn("⚠️ 搜索数据无效");
@@ -23,13 +23,16 @@ class SearchEngine {
             if (matchResult.exact) {
                 exactMatches.push({
                     ...item,
-                    matchScore: matchResult.score
+                    matchScore: matchResult.score,
+                    matchedTerm: matchResult.matchedTerm,
+                    matchType: matchResult.matchType
                 });
             } else if (matchResult.fuzzy) {
                 fuzzyMatches.push({
                     ...item,
                     matchedTerm: matchResult.matchedTerm,
-                    matchScore: matchResult.score
+                    matchScore: matchResult.score,
+                    matchType: matchResult.matchType
                 });
             }
         });
@@ -38,88 +41,128 @@ class SearchEngine {
         exactMatches.sort((a, b) => b.matchScore - a.matchScore);
         fuzzyMatches.sort((a, b) => b.matchScore - a.matchScore);
 
-        console.log(`📊 搜索结果: 精确匹配 ${exactMatches.length} 条, 模糊匹配 ${fuzzyMatches.length} 条`);
+        console.log(`📊📊 搜索结果: 精确匹配 ${exactMatches.length} 条, 模糊匹配 ${fuzzyMatches.length} 条`);
         
         return {
             exact: exactMatches,
-            fuzzy: fuzzyMatches.slice(0, 10) // 限制模糊建议数量
+            fuzzy: this.removeDuplicates(fuzzyMatches).slice(0, 10) // 限制模糊建议数量并去重
         };
     }
 
     calculateMatch(item, query, filterType) {
         const searchTerm = query.toLowerCase().trim();
+        if (!searchTerm) return { exact: false, fuzzy: false, score: 0 };
+        
         let bestScore = 0;
         let bestMatchTerm = '';
+        let bestMatchType = '';
 
         // 根据过滤类型进行匹配
         if (filterType === 'all' || filterType === 'filename') {
-            const filenameScore = this.calculateFilenameMatch(item.filename, searchTerm);
-            if (filenameScore > bestScore) {
-                bestScore = filenameScore;
-                bestMatchTerm = item.filename;
+            const filenameResult = this.calculateFilenameMatch(item.filename, searchTerm);
+            if (filenameResult.score > bestScore) {
+                bestScore = filenameResult.score;
+                bestMatchTerm = filenameResult.matchedTerm;
+                bestMatchType = 'filename';
             }
         }
 
-        if (filterType === 'all' || filterType === 'keywords') {
-            const keywordScore = this.calculateKeywordsMatch(item.keywords, searchTerm);
-            if (keywordScore > bestScore) {
-                bestScore = keywordScore;
-                bestMatchTerm = searchTerm;
+        if ((filterType === 'all' || filterType === 'keywords') && item.keywords) {
+            const keywordResult = this.calculateKeywordsMatch(item.keywords, searchTerm);
+            if (keywordResult.score > bestScore) {
+                bestScore = keywordResult.score;
+                bestMatchTerm = keywordResult.matchedTerm;
+                bestMatchType = 'keywords';
             }
         }
 
-        if (filterType === 'all' || filterType === 'content') {
-            const contentScore = this.calculateContentMatch(item.text_content, searchTerm);
-            if (contentScore > bestScore) {
-                bestScore = contentScore;
-                bestMatchTerm = searchTerm;
+        if ((filterType === 'all' || filterType === 'content') && item.text_content) {
+            const contentResult = this.calculateContentMatch(item.text_content, searchTerm);
+            if (contentResult.score > bestScore) {
+                bestScore = contentResult.score;
+                bestMatchTerm = contentResult.matchedTerm;
+                bestMatchType = 'content';
+            }
+        }
+
+        // 歌曲名匹配
+        if ((filterType === 'all' || filterType === 'content') && item.song_name) {
+            const songResult = this.calculateSongNameMatch(item.song_name, searchTerm);
+            if (songResult.score > bestScore) {
+                bestScore = songResult.score;
+                bestMatchTerm = songResult.matchedTerm;
+                bestMatchType = 'song_name';
             }
         }
 
         // 判断匹配类型
         if (bestScore >= 80) {
-            return { exact: true, fuzzy: false, score: bestScore, matchedTerm: bestMatchTerm };
+            return { 
+                exact: true, 
+                fuzzy: false, 
+                score: bestScore, 
+                matchedTerm: bestMatchTerm,
+                matchType: bestMatchType
+            };
         } else if (bestScore >= 30) {
-            return { exact: false, fuzzy: true, score: bestScore, matchedTerm: bestMatchTerm };
+            return { 
+                exact: false, 
+                fuzzy: true, 
+                score: bestScore, 
+                matchedTerm: bestMatchTerm,
+                matchType: bestMatchType
+            };
         } else {
             return { exact: false, fuzzy: false, score: 0 };
         }
     }
 
     calculateFilenameMatch(filename, searchTerm) {
-        if (!filename) return 0;
+        if (!filename) return { score: 0, matchedTerm: '' };
         
         const filenameLower = filename.toLowerCase();
         
-        if (filenameLower === searchTerm) return 100;
-        if (filenameLower.startsWith(searchTerm)) return 85;
-        if (filenameLower.includes(searchTerm)) return 70;
+        if (filenameLower === searchTerm) {
+            return { score: 100, matchedTerm: filename };
+        }
+        if (filenameLower.startsWith(searchTerm)) {
+            return { score: 85, matchedTerm: filename };
+        }
+        if (filenameLower.includes(searchTerm)) {
+            return { score: 70, matchedTerm: filename };
+        }
         
-        return 0;
+        return { score: 0, matchedTerm: '' };
     }
 
     calculateKeywordsMatch(keywords, searchTerm) {
-        if (!keywords || !Array.isArray(keywords)) return 0;
+        if (!keywords || !Array.isArray(keywords)) {
+            return { score: 0, matchedTerm: '' };
+        }
         
         for (const keyword of keywords) {
             const keywordLower = keyword.toLowerCase();
             
-            if (keywordLower === searchTerm) return 90;
-            if (keywordLower.includes(searchTerm)) return 60;
+            if (keywordLower === searchTerm) {
+                return { score: 90, matchedTerm: keyword };
+            }
+            if (keywordLower.includes(searchTerm)) {
+                return { score: 60, matchedTerm: keyword };
+            }
         }
         
-        return 0;
+        return { score: 0, matchedTerm: '' };
     }
 
     calculateContentMatch(content, searchTerm) {
-        if (!content) return 0;
+        if (!content) return { score: 0, matchedTerm: '' };
         
         const contentLower = content.toLowerCase();
         
         if (contentLower.includes(searchTerm)) {
             // 根据出现位置和频率计算分数
             const position = contentLower.indexOf(searchTerm);
-            const frequency = (contentLower.match(new RegExp(searchTerm, 'g')) || []).length;
+            const frequency = (contentLower.match(new RegExp(this.escapeRegExp(searchTerm), 'g')) || []).length;
             
             let score = 40; // 基础分
             
@@ -130,15 +173,187 @@ class SearchEngine {
             // 频率越高分数越高
             score += Math.min(frequency * 5, 20);
             
-            return Math.min(score, 80);
+            // 提取匹配的上下文
+            const matchedTerm = this.extractMatchContext(content, searchTerm, position);
+            
+            return {
+                score: Math.min(score, 80),
+                matchedTerm: matchedTerm
+            };
         }
         
-        return 0;
+        // 中文分词匹配 - 新增功能
+        const chineseMatch = this.chineseTextMatch(content, searchTerm);
+        if (chineseMatch.found) {
+            return {
+                score: Math.min(chineseMatch.score, 70), // 中文匹配分数上限70
+                matchedTerm: chineseMatch.matchedTerm
+            };
+        }
+        
+        return { score: 0, matchedTerm: '' };
+    }
+
+    calculateSongNameMatch(songName, searchTerm) {
+        if (!songName) return { score: 0, matchedTerm: '' };
+        
+        const songNameLower = songName.toLowerCase();
+        
+        if (songNameLower === searchTerm) {
+            return { score: 95, matchedTerm: songName };
+        }
+        if (songNameLower.includes(searchTerm)) {
+            return { score: 75, matchedTerm: songName };
+        }
+        
+        return { score: 0, matchedTerm: '' };
+    }
+
+    // 新增：中文文本匹配（处理中文分词）
+    chineseTextMatch(content, searchTerm) {
+        if (!content || searchTerm.length < 1) {
+            return { found: false, score: 0, matchedTerm: '' };
+        }
+        
+        const contentLower = content.toLowerCase();
+        
+        // 如果是单个中文字符，直接搜索
+        if (searchTerm.length === 1 && this.isChineseChar(searchTerm)) {
+            if (contentLower.includes(searchTerm)) {
+                const frequency = (contentLower.match(new RegExp(this.escapeRegExp(searchTerm), 'g')) || []).length;
+                const position = contentLower.indexOf(searchTerm);
+                
+                let score = 35; // 单字匹配基础分稍低
+                if (position < 100) score += 15;
+                score += Math.min(frequency * 3, 15);
+                
+                const matchedTerm = this.extractMatchContext(content, searchTerm, position);
+                return {
+                    found: true,
+                    score: Math.min(score, 65),
+                    matchedTerm: matchedTerm
+                };
+            }
+        }
+        
+        // 多字符中文匹配
+        if (searchTerm.length >= 2) {
+            // 尝试直接匹配
+            if (contentLower.includes(searchTerm)) {
+                const frequency = (contentLower.match(new RegExp(this.escapeRegExp(searchTerm), 'g')) || []).length;
+                const position = contentLower.indexOf(searchTerm);
+                
+                let score = 45;
+                if (position < 100) score += 20;
+                score += Math.min(frequency * 4, 20);
+                
+                const matchedTerm = this.extractMatchContext(content, searchTerm, position);
+                return {
+                    found: true,
+                    score: Math.min(score, 75),
+                    matchedTerm: matchedTerm
+                };
+            }
+            
+            // 尝试分词匹配（查找包含搜索词中每个字符的短语）
+            if (this.isChineseText(searchTerm)) {
+                const matchResult = this.chinesePhraseMatch(content, searchTerm);
+                if (matchResult.found) {
+                    return matchResult;
+                }
+            }
+        }
+        
+        return { found: false, score: 0, matchedTerm: '' };
+    }
+
+    // 中文短语匹配
+    chinesePhraseMatch(content, searchTerm) {
+        const contentLower = content.toLowerCase();
+        const chars = searchTerm.split('');
+        
+        // 查找包含所有字符的短语
+        let bestPhrase = '';
+        let bestScore = 0;
+        
+        // 滑动窗口搜索
+        const windowSize = Math.min(10, contentLower.length);
+        for (let i = 0; i <= contentLower.length - windowSize; i++) {
+            const phrase = contentLower.substring(i, i + windowSize);
+            let containsAll = true;
+            
+            for (const char of chars) {
+                if (!phrase.includes(char)) {
+                    containsAll = false;
+                    break;
+                }
+            }
+            
+            if (containsAll) {
+                // 计算匹配度
+                let score = 30;
+                // 字符顺序匹配度
+                const charOrder = chars.join('');
+                if (phrase.includes(charOrder)) score += 20;
+                
+                if (score > bestScore) {
+                    bestScore = score;
+                    bestPhrase = content.substring(i, i + windowSize);
+                }
+            }
+        }
+        
+        if (bestScore > 0) {
+            return {
+                found: true,
+                score: Math.min(bestScore, 60),
+                matchedTerm: bestPhrase + '...'
+            };
+        }
+        
+        return { found: false, score: 0, matchedTerm: '' };
+    }
+
+    // 提取匹配上下文
+    extractMatchContext(content, searchTerm, position) {
+        const start = Math.max(0, position - 15);
+        const end = Math.min(content.length, position + searchTerm.length + 15);
+        
+        let excerpt = content.substring(start, end);
+        if (start > 0) excerpt = '...' + excerpt;
+        if (end < content.length) excerpt = excerpt + '...';
+        
+        return excerpt;
+    }
+
+    // 辅助方法
+    escapeRegExp(string) {
+        return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    }
+
+    isChineseChar(char) {
+        return /[\u4e00-\u9fa5]/.test(char);
+    }
+
+    isChineseText(text) {
+        return /^[\u4e00-\u9fa5]+$/.test(text);
+    }
+
+    removeDuplicates(items) {
+        const seen = new Set();
+        return items.filter(item => {
+            const key = item.filename;
+            if (seen.has(key)) {
+                return false;
+            }
+            seen.add(key);
+            return true;
+        });
     }
 
     // 高级搜索功能
     advancedSearch(data, criteria) {
-        console.log("🔍 执行高级搜索:", criteria);
+        console.log("🔍🔍 执行高级搜索:", criteria);
         
         return data.filter(item => {
             let matches = true;
@@ -214,6 +429,11 @@ class SearchEngine {
                 const snippet = item.text_content.substring(start, end).trim();
                 suggestions.add(snippet);
             }
+            
+            // 从歌曲名获取建议
+            if (item.song_name && item.song_name.toLowerCase().includes(partialLower)) {
+                suggestions.add(item.song_name);
+            }
         });
         
         return Array.from(suggestions).slice(0, 8); // 限制建议数量
@@ -272,7 +492,8 @@ class SearchEngine {
         // 查找包含当前搜索词的记录
         const matchingItems = data.filter(item => 
             (item.keywords && item.keywords.some(kw => kw.toLowerCase().includes(currentLower))) ||
-            (item.text_content && item.text_content.toLowerCase().includes(currentLower))
+            (item.text_content && item.text_content.toLowerCase().includes(currentLower)) ||
+            (item.song_name && item.song_name.toLowerCase().includes(currentLower))
         );
         
         // 从匹配记录中提取其他关键词作为相关搜索
@@ -285,6 +506,11 @@ class SearchEngine {
                     }
                 });
             }
+            
+            // 从歌曲名提取相关搜索
+            if (item.song_name && item.song_name.toLowerCase() !== currentLower) {
+                related.add(item.song_name);
+            }
         });
         
         return Array.from(related).slice(0, 5);
@@ -292,7 +518,7 @@ class SearchEngine {
 }
 
 // 创建全局搜索实例
-console.log("🌐 创建全局搜索引擎实例...");
+console.log("🌐🌐 创建全局搜索引擎实例...");
 const searchEngine = new SearchEngine();
 
 // 导出供其他模块使用

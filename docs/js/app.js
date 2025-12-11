@@ -168,30 +168,36 @@ class App {
                 }
             });
         }
+
+        
         console.log("✅ 事件监听器设置完成");
     }
 
     performSearch() {
-        console.log("🔍 执行搜索...");
+        console.log("🔍🔍 执行搜索...");
         
         if (!this.currentData || this.currentData.length === 0) {
             this.showError('数据尚未加载完成，请稍后重试。');
             return;
         }
-
+    
         const query = document.getElementById('search-input').value.trim();
         const filterType = document.getElementById('filter-type').value;
         
         this.currentSearchQuery = query;
-
+    
         if (!query) {
             this.clearSearchResults();
             return;
         }
-
+    
+        // 使用新的搜索方法
         const results = this.searchEngine.search(this.currentData, query, filterType);
         this.searchResults = results.exact;
         this.displaySearchResults(results);
+        
+        // 保存搜索历史
+        this.searchEngine.saveSearchHistory(query);
     }
 
     displaySearchResults(results) {
@@ -301,23 +307,62 @@ class App {
             return;
         }
     
-        container.innerHTML = suggestions.map(item => `
-            <div class="suggestion-item" data-term="${this.escapeHtml(item.matchedTerm)}">
-                <strong>${this.escapeHtml(item.matchedTerm)}</strong>
-                <span class="suggestion-file">(${this.escapeHtml(item.filename)})</span>
-            </div>
-        `).join('');
+        // 过滤掉已经在精确匹配中的项目
+        const exactFilenames = new Set(this.searchResults.map(item => item.filename));
+        const filteredSuggestions = suggestions.filter(item => 
+            !exactFilenames.has(item.filename)
+        );
     
-        // 添加事件监听器
+        if (filteredSuggestions.length === 0) {
+            container.innerHTML = '<p class="no-results">没有找到额外的模糊匹配建议</p>';
+            return;
+        }
+    
+        container.innerHTML = filteredSuggestions.map(item => {
+            let suggestionText = '';
+            let matchType = '';
+            
+            // 根据匹配类型显示不同的文本
+            switch (item.matchType) {
+                case 'content':
+                    suggestionText = `内容包含: "${this.truncateText(item.matchedTerm, 30)}"`;
+                    matchType = '内容匹配';
+                    break;
+                case 'song_name':
+                    suggestionText = `歌曲名: ${item.matchedTerm}`;
+                    matchType = '歌曲名';
+                    break;
+                case 'keywords':
+                    suggestionText = `关键词: ${item.matchedTerm}`;
+                    matchType = '关键词';
+                    break;
+                default:
+                    suggestionText = `匹配: ${item.matchedTerm}`;
+                    matchType = '匹配';
+            }
+            
+            return `
+                <div class="suggestion-item" data-term="${this.escapeHtml(item.matchedTerm)}">
+                    <div class="suggestion-header">
+                        <strong>${this.escapeHtml(item.filename)}</strong>
+                        <span class="suggestion-type">${matchType}</span>
+                    </div>
+                    <div class="suggestion-content">${suggestionText}</div>
+                    <div class="suggestion-score">匹配度: ${Math.round(item.matchScore)}%</div>
+                </div>
+            `;
+        }).join('');
+    
+        // 设置事件监听器
         this.setupSuggestionEventListeners();
     }
+    
 
-    // 新增：设置建议项事件监听器
+    // 设置建议项事件监听
     setupSuggestionEventListeners() {
         const container = document.getElementById('fuzzy-suggestions');
         if (!container) return;
 
-        // 使用事件委托来处理动态生成的元素
         container.addEventListener('click', (e) => {
             const suggestionItem = e.target.closest('.suggestion-item');
             if (suggestionItem) {
@@ -327,6 +372,11 @@ class App {
                 }
             }
         });
+    }
+
+    truncateText(text, maxLength) {
+        if (!text || text.length <= maxLength) return text;
+        return text.substring(0, maxLength) + '...';
     }
 
     // 打开图片预览模态框
@@ -550,17 +600,42 @@ class App {
 
     useSuggestion(term) {
         console.log(`💡💡 使用建议: ${term}`);
-        const searchInput = document.getElementById('search-input');
-        if (searchInput) {
-            searchInput.value = term;
-            this.performSearch();
-            
-            // 滚动到精确搜索结果区域
+        
+        // 清理建议中的省略号等
+        const cleanTerm = term.replace(/^\.\.\.|\.\.\.$/g, '').trim();
+        
+        // 设置搜索框值
+        document.getElementById('search-input').value = cleanTerm;
+        
+        // 执行搜索
+        this.performSearch();
+        
+        // 滚动到精确匹配区域
+        setTimeout(() => {
             const exactResults = document.getElementById('exact-results');
             if (exactResults) {
                 exactResults.scrollIntoView({ behavior: 'smooth', block: 'start' });
             }
-        }
+        }, 100);
+    }
+
+    // 获取匹配类型标签
+    getMatchTypeLabel(matchType) {
+        const labels = {
+            'content': '内容匹配',
+            'song_name': '歌曲名',
+            'keywords': '关键词',
+            'filename': '文件名'
+        };
+        return labels[matchType] || '匹配';
+    }
+
+    // 转义HTML
+    escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
     }
 
     getImageUrl(filename) {

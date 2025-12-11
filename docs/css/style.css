@@ -651,28 +651,90 @@ body {
 
 /* 添加建议项的悬停样式 */
 .suggestion-item {
-    padding: 12px 15px;
+    padding: 15px;
     border: 1px solid #e0e0e0;
-    border-radius: 6px;
-    margin-bottom: 8px;
+    border-radius: 8px;
+    margin-bottom: 10px;
     cursor: pointer;
     transition: all 0.3s ease;
     background: #f8f9fa;
+    position: relative;
 }
 
 .suggestion-item:hover {
     background: #3498db;
     color: white;
     border-color: #3498db;
-    transform: translateX(5px);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(52, 152, 219, 0.3);
 }
 
-.suggestion-item:hover .suggestion-file {
-    color: #e0e0e0;
+.suggestion-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
 }
 
+.suggestion-header strong {
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+.suggestion-type {
+    font-size: 0.75em;
+    background: #e74c3c;
+    color: white;
+    padding: 3px 8px;
+    border-radius: 12px;
+    font-weight: 500;
+}
+
+.suggestion-item:hover .suggestion-type {
+    background: rgba(255, 255, 255, 0.3);
+    color: white;
+}
 .suggestion-file {
     font-size: 0.9em;
     color: #7f8c8d;
     margin-left: 8px;
+}
+
+.suggestion-content {
+    font-size: 0.9em;
+    opacity: 0.8;
+    margin-bottom: 5px;
+    line-height: 1.4;
+}
+
+.suggestion-item:hover .suggestion-content {
+    opacity: 1;
+}
+
+.suggestion-score {
+    font-size: 0.8em;
+    color: #7f8c8d;
+    text-align: right;
+}
+
+.suggestion-item:hover .suggestion-score {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+/* 搜索结果容器样式 */
+#fuzzy-suggestions {
+    display: grid;
+    gap: 12px;
+    margin-top: 15px;
+}
+
+/* 无结果样式 */
+.no-results {
+    text-align: center;
+    padding: 30px;
+    color: #7f8c8d;
+    font-style: italic;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border: 1px dashed #ddd;
 }
